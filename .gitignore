@@ -2,3 +2,4 @@
 .sys*
 *.png
 .ipynb_checkpoints
+.tempfile
