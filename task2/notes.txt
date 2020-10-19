@@ -1,0 +1,9 @@
+Using LBN to regress boosted Pi+/- and Pi0 4-momenta:
+    Using 4 4-momenta output features, boost_mode=LBN.PAIRS
+    Output is 4x4 i.e. 4-momenta of each particle to boost
+    Using 25 epochs on full dataset
+    Performance with no hidden layers:
+        mse = 220, mae=8.2
+    Performance with 1 dense hidden layer with 32 nodes using relu:
+        mse = 67, mae = 5
+        
