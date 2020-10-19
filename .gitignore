@@ -1,3 +1,4 @@
 .swanproject
 .sys*
 *.png
+.ipynb_checkpoints
