@@ -1,9 +1,47 @@
+### Results:
 Using LBN to regress boosted Pi+/- and Pi0 4-momenta:
     Using 4 4-momenta output features, boost_mode=LBN.PAIRS
-    Output is 4x4 i.e. 4-momenta of each particle to boost
+    Output is dense(16) reshaped to 4x4
+    i.e. 4-momenta of each particle to boost
     Using 25 epochs on full dataset
+    Using MSE for loss
     Performance with no hidden layers:
         mse = 220, mae=8.2
     Performance with 1 dense hidden layer with 32 nodes using relu:
         mse = 67, mae = 5
+    Performance with 1 dense hidden layer with 32 nodes using sigmoid:
+        mse = 116, mae = 6.3
+    Overfitting always negligible
+
+Using LBN to regress y_tau:
+    Using boost_mode=LBN.PAIRS
+    Output is 1 node
+    Using 25 epochs on full dataset
+    Using MSE for loss
+    Performance with 1 dense hidden layer with 32 nodes using relu:
+        mse = 2.8e-04, val_mae = 0.0124, std(y_T) = 0.32
+        Good performance comparatively
+   
+Using LBN to regress normalised lambdas/IP_trans1,2:
+    Using 4 4-momenta output features, boost_mode=LBN.PAIRS
+    Output is dense(6) reshaped to 3x2
+    Using 25 epochs on full dataset
+    Using MSE for loss
+    Performance with 1 dense hidden layer with 32 nodes using relu:
+        mse = 0.33, mae: 0.5, std(y) = 0.577
+        guesses 0 vector each time
         
+ 
+Using LBN to regress big_O:
+    Using boost_mode=LBN.PAIRS
+    Output is 1 node
+    Using 25 epochs on full dataset
+    Using MSE for loss
+    big_O is much more complex than y_T, involving cross and dot products
+    Performance with 1 dense hidden layer with 32 nodes using relu:
+        mse = 312, mae = 14, std(big_O) = 17.7
+        mae only a bit smaller than std, bad performance
+
+
+### Tips:
+use layer.get_weights to visually inspect weights

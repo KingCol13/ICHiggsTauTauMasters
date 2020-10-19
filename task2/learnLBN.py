@@ -57,16 +57,15 @@ df = df[
     & (df["mva_dm_2"] == 1)
 ]
 
+num_data = len(df)
 #%% Lorentz boosts
 
 # Create our 4-vectors in the lab frame
 pi_1 = Momentum4(df["pi_E_1"], df["pi_px_1"], df["pi_py_1"], df["pi_pz_1"])
 pi_2 = Momentum4(df["pi_E_2"], df["pi_px_2"], df["pi_py_2"], df["pi_pz_2"])
 
-#TODO: maybe remove these and uncomment above:
 IP1 = Momentum4(df["pi0_E_1"], df["pi0_px_1"], df["pi0_py_1"], df["pi0_pz_1"])
 IP2 = Momentum4(df["pi0_E_2"], df["pi0_px_2"], df["pi0_py_2"], df["pi0_pz_2"])
-
 
 # Create 4-vectors in the ZMF
 pi_T4M = pi_1 + pi_2
@@ -77,17 +76,38 @@ pi2_ZMF = pi_2.boost_particle(-pi_T4M)
 IP1_ZMF = IP1.boost_particle(-pi_T4M)
 IP2_ZMF = IP2.boost_particle(-pi_T4M)
 
+#%% Calculate other targets
+# Find the transverse components
+IP1_trans = np.cross(IP1_ZMF[1:,:].transpose(), pi1_ZMF[1:, :].transpose())
+IP2_trans = np.cross(IP2_ZMF[1:,:].transpose(), pi2_ZMF[1:, :].transpose())
+
+# Normalise the vectors
+IP1_trans = IP1_trans/np.linalg.norm(IP1_trans, ord=2, axis=1, keepdims=True)
+IP2_trans = IP2_trans/np.linalg.norm(IP2_trans, ord=2, axis=1, keepdims=True)
+
+#Calculate Phi_ZMF using dot product and arccos
+dot = np.sum(IP1_trans*IP2_trans, axis=1)
+Phi_ZMF = np.arccos(dot)
+
+# Calculate O
+preO = np.cross(IP1_trans, IP2_trans).transpose()*np.array(pi2_ZMF[1:, :])
+big_O = np.sum(preO, axis=0)
+# Shift Phi based on O's sign
+Phi_ZMF=np.where(big_O<0, Phi_ZMF, 2*np.pi-Phi_ZMF)
+
+# Shift phi based on energy ratios
+y_T = np.array(df['y_1_1']*df['y_1_2'])
+Phi_ZMF=np.where(y_T<0, Phi_ZMF, np.where(Phi_ZMF<np.pi, Phi_ZMF+np.pi, Phi_ZMF-np.pi))
 #%% Creating features and targets
 
 # Create x and y tensors
 x = np.array(df[momenta_features], dtype=np.float32)
 
 # Reshape for LBN
-x = x.reshape(x.shape[0], 4, 4,)
+x = x.reshape(num_data, 4, 4,)
 
-y_T = np.array(df['y_1_1']*df['y_1_2'])
-y_T = y_T.reshape(y_T.shape[0], 1)
-y = y_T
+
+y = np.array([IP1_trans.transpose(), IP2_trans.transpose()], dtype=np.float32).transpose()
 
 #y = np.array([pi1_ZMF, pi2_ZMF, IP1_ZMF, IP2_ZMF], dtype=np.float32).transpose()
 #normalise y:
@@ -107,8 +127,8 @@ model = tf.keras.models.Sequential([
     myLBNLayer,
     tf.keras.layers.Dense(32, activation='relu'),
     #tf.keras.layers.Dropout(0.2),
-    tf.keras.layers.Dense(16),
-    tf.keras.layers.Reshape((4, 4), input_shape=(16,))
+    tf.keras.layers.Dense(6),
+    tf.keras.layers.Reshape((3, 2))
 ])
 
 loss_fn = tf.keras.losses.MeanSquaredError()
