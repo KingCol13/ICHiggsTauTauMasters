@@ -9,9 +9,18 @@ Using LBN to regress boosted Pi+/- and Pi0 4-momenta:
         mse = 220, mae=8.2
     Performance with 1 dense hidden layer with 32 nodes using relu:
         mse = 67, mae = 5
+        mse = 64.5, mae=4.88 (repeat)
     Performance with 1 dense hidden layer with 32 nodes using sigmoid:
         mse = 116, mae = 6.3
     Overfitting always negligible
+
+Using regular NN to regress boosted Pi +/- and Pi0 4-momenta:
+    25 epochs
+    Input 4 lab frame 4-momenta, output 4 boosted 4-momenta
+    16-32-32-16 (2 hidden dense layers using relu)
+    I.E same as LBN test but replace LBN with 32 dense nodes
+    Performance:
+        mse = 59, mae = 4.8
 
 Using LBN to regress y_tau:
     Using boost_mode=LBN.PAIRS

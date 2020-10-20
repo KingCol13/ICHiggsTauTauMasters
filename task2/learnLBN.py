@@ -101,14 +101,14 @@ Phi_ZMF=np.where(y_T<0, Phi_ZMF, np.where(Phi_ZMF<np.pi, Phi_ZMF+np.pi, Phi_ZMF-
 #%% Creating features and targets
 
 # Create x and y tensors
-x = np.array(df[momenta_features], dtype=np.float32)
+x = tf.convert_to_tensor(df[momenta_features], dtype=np.float32)
 
 # Reshape for LBN
-x = x.reshape(num_data, 4, 4,)
+x = tf.reshape(x, (num_data, 4, 4))
 
 
-y = np.array([IP1_trans.transpose(), IP2_trans.transpose()], dtype=np.float32).transpose()
-
+y = tf.convert_to_tensor([pi1_ZMF, pi2_ZMF, IP1_ZMF, IP2_ZMF], dtype=np.float32)
+y =  tf.transpose(y, [2, 0, 1])
 #y = np.array([pi1_ZMF, pi2_ZMF, IP1_ZMF, IP2_ZMF], dtype=np.float32).transpose()
 #normalise y:
 #y = (y-np.mean(y, axis=0))/np.std(y, axis=0)
@@ -123,12 +123,14 @@ myLBNLayer = LBNLayer((4, 4), 4, boost_mode=LBN.PAIRS, features=LBN_output_featu
 
 #define NN model and compile
 model = tf.keras.models.Sequential([
-    #tf.keras.layers.Flatten( input_shape=(24,)),
+    #tf.keras.layers.Flatten( input_shape=(4,4)),
     myLBNLayer,
+    #tf.keras.layers.Dense(32, activation='relu'),
+    tf.keras.layers.Dense(32, activation='relu'),
     tf.keras.layers.Dense(32, activation='relu'),
     #tf.keras.layers.Dropout(0.2),
-    tf.keras.layers.Dense(6),
-    tf.keras.layers.Reshape((3, 2))
+    tf.keras.layers.Dense(16),
+    tf.keras.layers.Reshape((4, 4))
 ])
 
 loss_fn = tf.keras.losses.MeanSquaredError()
@@ -140,7 +142,7 @@ print("Model compiled.")
 #%% Training model
 
 #train model
-history = model.fit(x, y, validation_split=0.3, epochs=25)
+history = model.fit(x, y, validation_split=0.3, epochs=5)
 
 #plot traning
 plt.figure()
