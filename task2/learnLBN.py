@@ -124,7 +124,7 @@ LBN_output_features = ["E", "px", "py", "pz"]
 #myLBNLayer = LBNLayer((4, 4), 11, boost_mode=LBN.PAIRS, features=LBN_output_features)
 
 #define NN model and compile
-model = tf.keras.models.Sequential([
+model1 = tf.keras.models.Sequential([
     tf.keras.layers.Flatten( input_shape=(4,4)),
     tf.keras.layers.Dense(32, activation='relu'),
     tf.keras.layers.Dense(32, activation='relu'),
@@ -132,7 +132,7 @@ model = tf.keras.models.Sequential([
 ])
 
 loss_fn = tf.keras.losses.MeanSquaredError()
-model.compile(optimizer='adam',
+model1.compile(optimizer='adam',
               loss=loss_fn,
               metrics=['mae'])
 
@@ -140,7 +140,7 @@ print("Model compiled.")
 #%% Training model
 
 #train model
-history = model.fit(x, y, validation_split=0.3, epochs=25)
+history = model1.fit(x, y, validation_split=0.3, epochs=25)
 
 #plot traning
 plt.figure()

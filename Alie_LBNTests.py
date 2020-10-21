@@ -176,10 +176,9 @@ phi_CP=np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_
 
 
 #try the different input 'geometry'
-#inputs=[phi_CP_unshifted, bigO, y_T]
-
+inputs=[phi_CP_unshifted, bigO, y_T]
 #inputs=[*pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, *pi_2_4Mom_star,*pi_1_4Mom_star]
-inputs = [*pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, df4['y_1_1'], df4['y_1_2'], *pi_2_4Mom_star[1:]]
+#inputs = [*pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, df4['y_1_1'], df4['y_1_2'], *pi_2_4Mom_star[1:]]
 x = np.array(inputs,dtype=np.float32).transpose()
 
 node_nb=32#64
@@ -190,10 +189,9 @@ step_init=2
 #we will have to be carefull about dimensions is we stop using arrays
 
 #The target
-#target = df4[["aco_angle_1"]]
-
-target=[phi_CP_unshifted, bigO, y_T]
-y = np.array(target,dtype=np.float32).transpose() #this is the target
+target = df4[["aco_angle_1"]]
+#target=[phi_CP_unshifted, bigO, y_T]
+y = np.array(target,dtype=np.float32)#.transpose() #this is the target
 
 print("\n the std of y", tf.math.reduce_std(y))
 
@@ -207,24 +205,21 @@ model = tf.keras.models.Sequential()
 output = ["E", "px", "py", "pz"]  
 
 
-#define NN model and compile
+#define NN model and compile, now merging 2 3 and all the way to output
 model = tf.keras.models.Sequential([
-    #LBNLayer((4, 4), 11, boost_mode=LBN.PAIRS, features=output),
     tf.keras.layers.Dense(node_nb, activation='relu', input_shape=(len(x[0]),)),
-    #tf.keras.layers.Dense(node_nb, activation='relu', input_shape=(len(x[0]),)),
-    #tf.keras.layers.Dense(node_nb, activation='relu', input_shape=(len(x[0]),)),
-    tf.keras.layers.Dense(3),
+    tf.keras.layers.Dense(node_nb, activation='relu', input_shape=(len(x[0]),)),
+    #tf.keras.layers.Dense(3), #this is the glue
+    #tf.keras.layers.Dense(32, activation='relu', input_shape=(len(x[0]),)),
+    #tf.keras.layers.Dense(32, activation='relu', input_shape=(len(x[0]),)),
+    tf.keras.layers.Dense(1) #this is the output, maybe phi_CP
     #tf.keras.layers.Reshape((4, 4))
 ])
 
 model.summary()
 
 
-#model.save() #to save the initial paramters and all to check on different training
-
-
 #Next run it
-# compile the model (we have to pass a loss or it won't compile)
 loss_fn = tf.keras.losses.MeanSquaredError() #try with this function but could do with loss="categorical_crossentropy" instead
 model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
 
@@ -233,11 +228,8 @@ model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
 history = model.fit(x, y, validation_split = 0.3, epochs = 25)
 
 
-#Now checking the weights and saving them
-#can set that as a simple numpy array
-#np.save('Phi_shifted_%iNodes_Layer1_S%i-0_%s.npy'%(node_nb,step_init,letter),model.get_layer('dense').get_weights())
-#np.save('Phi_shifted_1Nodes_Layer2_S%i-0_%s.npy'%(step_init,letter),model.get_layer('dense_1').get_weights())
-
+#save it and re-use later
+model.save("From_3_to_output.model")
 
 
 #plot traning
