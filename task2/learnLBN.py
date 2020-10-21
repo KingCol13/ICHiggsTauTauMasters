@@ -126,12 +126,13 @@ LBN_output_features = ["E", "px", "py", "pz"]
 #define NN model and compile
 model = tf.keras.models.Sequential([
     tf.keras.layers.Flatten( input_shape=(4,4)),
-    tf.keras.layers.Dense(32, activation='relu'),
-    tf.keras.layers.Dense(32, activation='relu'),
+    tf.keras.layers.Dense(300, activation='relu'),
+    tf.keras.layers.Dense(300, activation='relu'),
     tf.keras.layers.Dense(8)
 ])
 
 loss_fn = tf.keras.losses.MeanSquaredError()
+#loss_fn = tf.keras.losses.CosineSimilarity()
 model.compile(optimizer='adam',
               loss=loss_fn,
               metrics=['mae'])
@@ -140,7 +141,7 @@ print("Model compiled.")
 #%% Training model
 
 #train model
-history = model.fit(x, y, validation_split=0.3, epochs=25)
+history = model.fit(x, y, validation_split=0.3, epochs=5)
 
 #plot traning
 plt.figure()
@@ -151,3 +152,8 @@ plt.xlabel("Epoch")
 plt.ylabel("Loss")
 plt.legend()
 plt.show()
+
+#%% comparisons
+
+def get_frac_error(i):
+    return (model(x[i:i+1])[0] - y[i])/tf.abs(y[i])

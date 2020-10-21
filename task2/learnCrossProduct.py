@@ -23,18 +23,17 @@ y = np.cross(x[:,0,:], x[:,1,:])
 
 #%% Define and compile model
 
-model = tf.keras.models.Sequential([
+cross_model = tf.keras.models.Sequential([
     tf.keras.layers.Flatten( input_shape=(2,3)),
-    tf.keras.layers.Dense(16, activation='sigmoid'),
-    tf.keras.layers.Dense(16, activation='relu'),
+    tf.keras.layers.Dense(32, activation='relu'),
     #tf.keras.layers.Dropout(0.2),
     tf.keras.layers.Dense(3),
 ])
 
 loss_fn = tf.keras.losses.MeanSquaredError()
 #cosine similarity for only caring about direction:
-#loss_fn = tf.keras.losses.cosine_similarity()
-model.compile(optimizer='adam',
+loss_fn = tf.keras.losses.CosineSimilarity()
+cross_model.compile(optimizer='adam',
               loss=loss_fn,
               metrics=['mae'])
 
@@ -43,7 +42,7 @@ print("Model compiled.")
 #%% Training model
 
 #train model
-history = model.fit(x, y, validation_split=0.3, epochs=25)
+history = cross_model.fit(x, y, validation_split=0.3, epochs=25)
 
 #plot traning
 plt.figure()
