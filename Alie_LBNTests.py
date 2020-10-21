@@ -60,6 +60,8 @@ df4 = df4[
     & (df4["mva_dm_2"] == 1)
 ]
 
+print(0.7*len(df4),'This is the length') #up to here we are fine
+
 df_ps = df4[
       (df4["rand"]<df4["wt_cp_ps"]/2)     #a data frame only including the pseudoscalars
 ]
@@ -159,6 +161,8 @@ bigO=dot_product(pi_2_4Mom_star[1:],cross)
 #perform the shift w.r.t. O* sign
 phi_CP=np.where(bigO>=0, 2*np.pi-phi_CP, phi_CP)#, phi_CP)
 
+print('len phi', len(phi_CP))
+
 
 #additionnal shift that needs to be done do see differences between odd and even scenarios, with y=Energy ratios
 phi_CP=np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_CP)
@@ -172,16 +176,26 @@ phi_CP=np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_
 
 
 #try the different input 'geometry'
-inputs=[phi_CP_unshifted, bigO, y_T]
+#inputs=[phi_CP_unshifted, bigO, y_T]
 
+#inputs=[*pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, *pi_2_4Mom_star,*pi_1_4Mom_star]
+inputs = [*pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, df4['y_1_1'], df4['y_1_2'], *pi_2_4Mom_star[1:]]
 x = np.array(inputs,dtype=np.float32).transpose()
+
+node_nb=32#64
+letter='c'
+step_init=2
+
 #x = tf.reshape(x, (x.shape[0], len(inputs), ))  
 #we will have to be carefull about dimensions is we stop using arrays
 
 #The target
-target = y_T #df4[["aco_angle_1"]]
-y = tf.convert_to_tensor(np.array(target,dtype=np.float32), dtype=np.float32) #this is the target
+#target = df4[["aco_angle_1"]]
 
+target=[phi_CP_unshifted, bigO, y_T]
+y = np.array(target,dtype=np.float32).transpose() #this is the target
+
+print("\n the std of y", tf.math.reduce_std(y))
 
 
 #Now we will try and use lbn to get aco_angle_1 from the 'raw data'
@@ -196,8 +210,11 @@ output = ["E", "px", "py", "pz"]
 #define NN model and compile
 model = tf.keras.models.Sequential([
     #LBNLayer((4, 4), 11, boost_mode=LBN.PAIRS, features=output),
-    tf.keras.layers.Dense(8, activation='relu', input_shape = (len(x[0]),)),
-    tf.keras.layers.Dense(1)
+    tf.keras.layers.Dense(node_nb, activation='relu', input_shape=(len(x[0]),)),
+    #tf.keras.layers.Dense(node_nb, activation='relu', input_shape=(len(x[0]),)),
+    #tf.keras.layers.Dense(node_nb, activation='relu', input_shape=(len(x[0]),)),
+    tf.keras.layers.Dense(3),
+    #tf.keras.layers.Reshape((4, 4))
 ])
 
 model.summary()
@@ -218,11 +235,8 @@ history = model.fit(x, y, validation_split = 0.3, epochs = 25)
 
 #Now checking the weights and saving them
 #can set that as a simple numpy array
-np.save('Phi_shifted_8Nodes_Layer1.npy',model.get_layer('dense').get_weights())
-np.save('Phi_shifted_1Nodes_Layer2.npy',model.get_layer('dense_1').get_weights())
-
-
-
+#np.save('Phi_shifted_%iNodes_Layer1_S%i-0_%s.npy'%(node_nb,step_init,letter),model.get_layer('dense').get_weights())
+#np.save('Phi_shifted_1Nodes_Layer2_S%i-0_%s.npy'%(step_init,letter),model.get_layer('dense_1').get_weights())
 
 
 
