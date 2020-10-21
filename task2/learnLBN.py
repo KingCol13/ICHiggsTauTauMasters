@@ -93,22 +93,24 @@ Phi_ZMF = np.arccos(dot)
 preO = np.cross(IP1_trans, IP2_trans).transpose()*np.array(pi2_ZMF[1:, :])
 big_O = np.sum(preO, axis=0)
 # Shift Phi based on O's sign
-Phi_ZMF=np.where(big_O<0, Phi_ZMF, 2*np.pi-Phi_ZMF)
+Phi_Shifted=np.where(big_O<0, Phi_ZMF, 2*np.pi-Phi_ZMF)
 
 # Shift phi based on energy ratios
+y_1 = np.array(df['y_1_1'])
+y_2 = np.array(df['y_1_2'])
 y_T = np.array(df['y_1_1']*df['y_1_2'])
-Phi_ZMF=np.where(y_T<0, Phi_ZMF, np.where(Phi_ZMF<np.pi, Phi_ZMF+np.pi, Phi_ZMF-np.pi))
+Phi_Shifted=np.where(y_T<0, Phi_Shifted, np.where(Phi_Shifted<np.pi, Phi_Shifted+np.pi, Phi_Shifted-np.pi))
 #%% Creating features and targets
 
 # Create x and y tensors
-x = tf.convert_to_tensor(df[momenta_features], dtype=np.float32)
+x = tf.convert_to_tensor([pi1_ZMF, pi2_ZMF, IP1_ZMF, IP2_ZMF], dtype=np.float32)
+x  =  tf.transpose(x, [2, 0, 1])
 
-# Reshape for LBN
-x = tf.reshape(x, (num_data, 4, 4))
-
-
-y = tf.convert_to_tensor([pi1_ZMF, pi2_ZMF, IP1_ZMF, IP2_ZMF], dtype=np.float32)
-y =  tf.transpose(y, [2, 0, 1])
+y_1 = y_1.reshape(num_data, 1)
+y_2 = y_2.reshape(num_data, 1)
+y = np.concatenate((IP1_trans, IP2_trans, y_1, y_2),axis=1)#, pi2_ZMF[1:].transpose()), axis=1)
+y = tf.convert_to_tensor(y, dtype=np.float32)
+#y =  tf.transpose(y, [2, 0, 1])
 #y = np.array([pi1_ZMF, pi2_ZMF, IP1_ZMF, IP2_ZMF], dtype=np.float32).transpose()
 #normalise y:
 #y = (y-np.mean(y, axis=0))/np.std(y, axis=0)
@@ -119,18 +121,14 @@ y =  tf.transpose(y, [2, 0, 1])
 LBN_output_features = ["E", "px", "py", "pz"]
 
 #define our LBN layer:
-myLBNLayer = LBNLayer((4, 4), 4, boost_mode=LBN.PAIRS, features=LBN_output_features)
+#myLBNLayer = LBNLayer((4, 4), 11, boost_mode=LBN.PAIRS, features=LBN_output_features)
 
 #define NN model and compile
 model = tf.keras.models.Sequential([
-    #tf.keras.layers.Flatten( input_shape=(4,4)),
-    myLBNLayer,
-    #tf.keras.layers.Dense(32, activation='relu'),
+    tf.keras.layers.Flatten( input_shape=(4,4)),
     tf.keras.layers.Dense(32, activation='relu'),
     tf.keras.layers.Dense(32, activation='relu'),
-    #tf.keras.layers.Dropout(0.2),
-    tf.keras.layers.Dense(16),
-    tf.keras.layers.Reshape((4, 4))
+    tf.keras.layers.Dense(8)
 ])
 
 loss_fn = tf.keras.losses.MeanSquaredError()
@@ -142,7 +140,7 @@ print("Model compiled.")
 #%% Training model
 
 #train model
-history = model.fit(x, y, validation_split=0.3, epochs=5)
+history = model.fit(x, y, validation_split=0.3, epochs=25)
 
 #plot traning
 plt.figure()
