@@ -15,12 +15,18 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, roc_curve, roc_auc_score
 import xgboost as xgb
+
 import matplotlib as mpl
 #mpl.use('Agg')
 import matplotlib.pyplot as plt
 from lbn import LBN, LBNLayer
 import tensorflow as tf
 import keras
+
+from pylorentz import Momentum4
+from pylorentz import Vector4
+from pylorentz import Position4
+
 
 # loading the tree
 tree = uproot.open("/eos/user/d/dwinterb/SWAN_projects/Masters_CP/MVAFILE_GluGluHToTauTauUncorrelatedDecay_Filtered_tt_2018.root")["ntuple"]
@@ -67,6 +73,37 @@ print("panda Data frame created \n")
 df4.head()
 
 
+#########################Some geometrical functions#####################################
+
+
+def cross_product(vector3_1,vector3_2):
+    if len(vector3_1)!=3 or len(vector3_1)!=3:
+        print('These are not 3D arrays !')
+    x_perp_vector=vector3_1[1]*vector3_2[2]-vector3_1[2]*vector3_2[1]
+    y_perp_vector=vector3_1[2]*vector3_2[0]-vector3_1[0]*vector3_2[2]
+    z_perp_vector=vector3_1[0]*vector3_2[1]-vector3_1[1]*vector3_2[0]
+    return np.array([x_perp_vector,y_perp_vector,z_perp_vector])
+
+def dot_product(vector1,vector2):
+    if len(vector1)!=len(vector2):
+        raise Arrays_of_different_size
+    prod=0
+    for i in range(len(vector1)):
+        prod=prod+vector1[i]*vector2[i]
+    return prod
+
+
+def norm(vector):
+    if len(vector)!=3:
+        print('This is only for a 3d vector')
+    return np.sqrt(vector[0]**2+vector[1]**2+vector[2]**2)
+
+
+
+############### ALL Hand-calculated parameters #################
+
+
+
 #The different *initial* 4 vectors, (E,px,py,pz)
 pi_1=np.array([df4["pi_E_1"],df4["pi_px_1"],df4["pi_py_1"],df4["pi_pz_1"]])
 pi_2=np.array([df4["pi_E_2"],df4["pi_px_2"],df4["pi_py_2"],df4["pi_pz_2"]])
@@ -74,68 +111,119 @@ pi_2=np.array([df4["pi_E_2"],df4["pi_px_2"],df4["pi_py_2"],df4["pi_pz_2"]])
 pi0_1=np.array([df4["pi0_E_1"],df4["pi0_px_1"],df4["pi0_py_1"],df4["pi0_pz_1"]])
 pi0_2=np.array([df4["pi0_E_2"],df4["pi0_px_2"],df4["pi0_py_2"],df4["pi0_pz_2"]])
 
+#Charged and neutral pion momenta
+pi_1_4Mom=Momentum4(df4["pi_E_1"],df4["pi_px_1"],df4["pi_py_1"],df4["pi_pz_1"])
+pi_2_4Mom=Momentum4(df4["pi_E_2"],df4["pi_px_2"],df4["pi_py_2"],df4["pi_pz_2"])
+
+#Same for the pi0
+pi0_1_4Mom=Momentum4(df4["pi0_E_1"],df4["pi0_px_1"],df4["pi0_py_1"],df4["pi0_pz_1"])
+pi0_2_4Mom=Momentum4(df4["pi0_E_2"],df4["pi0_px_2"],df4["pi0_py_2"],df4["pi0_pz_2"])
+
+#This is the COM frame of the two charged pions w.r.t. which we'll boost
+ref_COM_4Mom=Momentum4(pi_1_4Mom+pi_2_4Mom)
+
+energies=[df4["pi_E_1"],df4["pi_E_2"],df4["pi0_E_1"],df4["pi0_E_2"]]
+
+#Lorentz boost everything in the ZMF of the two charged pions
+pi0_1_4Mom_star=pi0_1_4Mom.boost_particle(-ref_COM_4Mom)
+pi0_2_4Mom_star=pi0_2_4Mom.boost_particle(-ref_COM_4Mom)
+
+#Lorentz boost everything in the ZMF of the two neutral pions
+pi_1_4Mom_star=pi_1_4Mom.boost_particle(-ref_COM_4Mom)
+pi_2_4Mom_star=pi_2_4Mom.boost_particle(-ref_COM_4Mom)
+
+
+#calculating the perpependicular component
+pi0_1_3Mom_star_perp=cross_product(pi0_1_4Mom_star[1:],pi_1_4Mom_star[1:])
+pi0_2_3Mom_star_perp=cross_product(pi0_2_4Mom_star[1:],pi_2_4Mom_star[1:])
+
+#Now normalise:
+pi0_1_3Mom_star_perp=pi0_1_3Mom_star_perp/norm(pi0_1_3Mom_star_perp)
+pi0_2_3Mom_star_perp=pi0_2_3Mom_star_perp/norm(pi0_2_3Mom_star_perp)
+
+pi0_1_4Mom_star_perp=[pi0_1_4Mom_star[0],*pi0_1_3Mom_star_perp]
+pi0_2_4Mom_star_perp=[pi0_1_4Mom_star[0],*pi0_2_3Mom_star_perp]
+
+#Calculating phi_star
+phi_CP_unshifted=np.arccos(dot_product(pi0_1_3Mom_star_perp,pi0_2_3Mom_star_perp))
+
+phi_CP=phi_CP_unshifted
+
+#The energy ratios
+y_T = np.array(df4['y_1_1']*df4['y_1_2'])
+
+#The O variable
+cross=np.array(np.cross(pi0_1_3Mom_star_perp.transpose(),pi0_2_3Mom_star_perp.transpose()).transpose())
+bigO=dot_product(pi_2_4Mom_star[1:],cross)
+
+#perform the shift w.r.t. O* sign
+phi_CP=np.where(bigO>=0, 2*np.pi-phi_CP, phi_CP)#, phi_CP)
+
+
+#additionnal shift that needs to be done do see differences between odd and even scenarios, with y=Energy ratios
+phi_CP=np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_CP)
+
+
+
+################################# Here define the model ##############################
 
 #Now try and include the LBN
-x = tf.convert_to_tensor(np.array(df4[momenta_features],dtype=np.float32), dtype=np.float32)
+#x = tf.convert_to_tensor(np.array(df4[momenta_features],dtype=np.float32), dtype=np.float32)
 
 
 #try the different input 'geometry'
-x = tf.convert_to_tensor(np.array([pi_1,pi_2,pi0_1,pi0_2],dtype=np.float32), dtype=np.float32)
-x = tf.reshape(x, (x.shape[0], 4, 4))
+inputs=[phi_CP_unshifted, bigO, y_T]
 
-
-
+x = np.array(inputs,dtype=np.float32).transpose()
+#x = tf.reshape(x, (x.shape[0], len(inputs), ))  
+#we will have to be carefull about dimensions is we stop using arrays
 
 #The target
-y = tf.convert_to_tensor(np.array(df4[["aco_angle_1"]],dtype=np.float32), dtype=np.float32) #this is the target
+target = y_T #df4[["aco_angle_1"]]
+y = tf.convert_to_tensor(np.array(target,dtype=np.float32), dtype=np.float32) #this is the target
 
 
 
 #Now we will try and use lbn to get aco_angle_1 from the 'raw data'
-
 # start a sequential model
 model = tf.keras.models.Sequential()
 
-# add the LBN layer
-input_shape = (4, 4) #what input shape do we want ?
 
-#we have 4 particles,
-output = ["E", "px","py","pz","pt","pair_dy"]  #all the output we want  
+#all the output we want  in some boosted frame
+output = ["E", "px", "py", "pz"]  
 
 
 #define NN model and compile
 model = tf.keras.models.Sequential([
-    tf.keras.layers.Flatten( input_shape=(4,4)),
-    #LBNLayer((4, 4), 11, boost_mode=LBN.PAIRS, features=LBN_output_features),
-    tf.keras.layers.BatchNormalization(),   #what does this do ?
-    tf.keras.layers.Dense(300, activation='relu'),
-    tf.keras.layers.Dense(300, activation='relu'),
-    #tf.keras.layers.Dropout(0.2),
+    #LBNLayer((4, 4), 11, boost_mode=LBN.PAIRS, features=output),
+    tf.keras.layers.Dense(8, activation='relu', input_shape = (len(x[0]),)),
     tf.keras.layers.Dense(1)
 ])
-
-loss_fn = tf.keras.losses.MeanSquaredError()
-model.compile(optimizer='adam',
-              loss=loss_fn,
-              metrics=['mse'])
 
 model.summary()
 
 
+#model.save() #to save the initial paramters and all to check on different training
 
 
 #Next run it
 # compile the model (we have to pass a loss or it won't compile)
 loss_fn = tf.keras.losses.MeanSquaredError() #try with this function but could do with loss="categorical_crossentropy" instead
-model.compile(loss=loss_fn,optimizer='adam', metrics=['mse'])
+model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
 
-
-x=np.array(df4[momenta_features],dtype=np.float32)
-x=np.reshape(x,(len(x),4,4))    #could there be an issue with how x and y are defined as in the reshaping of x?
-y=np.array(df4[["aco_angle_1"]],dtype=np.float32)
 
 #train model
-history = model.fit(x, y, validation_split=0.3, epochs=50)
+history = model.fit(x, y, validation_split = 0.3, epochs = 25)
+
+
+#Now checking the weights and saving them
+#can set that as a simple numpy array
+np.save('Phi_shifted_8Nodes_Layer1.npy',model.get_layer('dense').get_weights())
+np.save('Phi_shifted_1Nodes_Layer2.npy',model.get_layer('dense_1').get_weights())
+
+
+
+
 
 
 #plot traning
