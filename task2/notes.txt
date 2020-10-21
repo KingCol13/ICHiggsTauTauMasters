@@ -12,6 +12,22 @@ Using LBN to regress boosted Pi+/- and Pi0 4-momenta:
         mse = 64.5, mae=4.88 (repeat)
     Performance with 1 dense hidden layer with 32 nodes using sigmoid:
         mse = 116, mae = 6.3
+    Performance with 2 dense hidden layers with 32 relu nodes each:
+        mse = 41.8, mae=4.00
+    Performance with 1 dense hidden layer with 64 relu nodes:
+        mse = 45.1, mae=4.11
+    Performance with 1 dense hidden layer with 64 nodes and 16 4-momenta from LBN:
+        mse = 43.5, mae = 3.9
+        mae was 3.5 in previous epoch
+    Performance with 1 dense hidden layer with 64 nodes and 8 4-momenta from LBN:
+        mse = 39.9, mae = 3.82
+    Performance with 2 dense hidden layer with 32 nodes each and 8 4-momenta from LBN:
+        mse = 48.2, mae = 4.26
+    Performance with 1 dense hidden layer with 32 nodes and 11 4-momenta from LBN:
+        mse = 52.0, mae = 4.35
+    Performance with 1 dense hidden layer with 64 nodes and 11 4-momenta from LBN:
+        mse = 36.3, mae = 3.67
+        name = "LBN11-64-16_mae=3.67.hd5"
     Overfitting always negligible
 
 Using regular NN to regress boosted Pi +/- and Pi0 4-momenta:
@@ -51,6 +67,9 @@ Using LBN to regress big_O:
         mse = 312, mae = 14, std(big_O) = 17.7
         mae only a bit smaller than std, bad performance
 
+
+
+Using NN to regress lambda_1,2, y_1, y_2, subleading pi 3 momenta
 
 ### Tips:
 use layer.get_weights to visually inspect weights
