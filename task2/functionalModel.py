@@ -89,19 +89,19 @@ pi0_2_trans = pi0_2_trans/np.linalg.norm(pi0_2_trans, ord=2, axis=1, keepdims=Tr
 
 #Calculate Phi_ZMF using dot product and arccos
 dot = np.sum(pi0_1_trans*pi0_2_trans, axis=1)
-phi_0_shift = np.arccos(dot)
+phi_shift_0 = np.arccos(dot)
 
 # Calculate O
 preO = np.cross(pi0_1_trans, pi0_2_trans).transpose()*np.array(pi_2_ZMF[1:, :])
 big_O = np.sum(preO, axis=0)
 # Shift Phi based on O's sign
-phi_1_shift=np.where(big_O<0, phi_0_shift, 2*np.pi-phi_0_shift)
+phi_shift_1=np.where(big_O<0, phi_shift_0, 2*np.pi-phi_shift_0)
 
 # Shift phi based on energy ratios
 y_1 = np.array(df['y_1_1'])
 y_2 = np.array(df['y_1_2'])
-y_T = np.array(df['y_1_1']*df['y_1_2'])
-phi_2_shift=np.where(y_T<0, phi_1_shift, np.where(phi_1_shift<np.pi, phi_1_shift+np.pi, phi_1_shift-np.pi))
+y_tau = np.array(df['y_1_1']*df['y_1_2'])
+phi_shift_2=np.where(y_tau<0, phi_shift_1, np.where(phi_shift_1<np.pi, phi_shift_1+np.pi, phi_shift_1-np.pi))
 
 #%% Set features and target
 
@@ -109,15 +109,36 @@ phi_2_shift=np.where(y_T<0, phi_1_shift, np.where(phi_1_shift<np.pi, phi_1_shift
 x = tf.convert_to_tensor([pi_1_ZMF, pi_2_ZMF, pi0_1_ZMF, pi0_2_ZMF], dtype=np.float32)
 x = tf.transpose(x, [2, 0, 1])
 
-y = tf.convert_to_tensor(phi_2_shift)
+#y = tf.convert_to_tensor(pi0_1_trans, dtype="float32")
+
+y = tf.convert_to_tensor(phi_shift_2, dtype="float32")
 y = tf.reshape(y, (num_data, 1))
+# Final goal:
+#y = tf.convert_to_tensor(phi_shift_2)
+#y = tf.reshape(y, (num_data, 1))
 
 #%% Define model
 
-inputs = tf.keras.Input(shape=(2,3))
-outputs = tf.linalg.cross(inputs[:,0,:], inputs[:,1,:], name="CrossProduct")
+tf_zmf_momenta = tf.keras.Input(shape=(4,4))
 
-model = tf.keras.Model(inputs=inputs, outputs=outputs, name="mnist_model")
+#Can I combine these 2 somehow?:
+tf_pi0_1_trans = tf.math.l2_normalize(tf.linalg.cross(tf_zmf_momenta[:,2,1:], tf_zmf_momenta[:,0,1:]), axis=1)
+tf_pi0_2_trans = tf.math.l2_normalize(tf.linalg.cross(tf_zmf_momenta[:,3,1:], tf_zmf_momenta[:,1,1:]), axis=1)
+
+tf_phi_shift_0 = tf.math.acos(tf.reduce_sum(tf.math.multiply(tf_pi0_1_trans, tf_pi0_2_trans), axis=1))
+
+tf_big_O = tf.math.reduce_sum(tf.math.multiply(tf.linalg.cross(tf_pi0_1_trans, tf_pi0_2_trans), tf_zmf_momenta[:,1,1:]), axis=1)
+
+tf_phi_shift_1 = tf.where(tf_big_O<0, tf_phi_shift_0, 2*np.pi-tf_phi_shift_0)
+
+tf_y_1 = (tf_zmf_momenta[:,0,0] - tf_zmf_momenta[:,2,0])/(tf_zmf_momenta[:,0,0] + tf_zmf_momenta[:,2,0])
+yf_y_2 = (tf_zmf_momenta[:,1,0] - tf_zmf_momenta[:,3,0])/(tf_zmf_momenta[:,1,0] + tf_zmf_momenta[:,3,0])
+
+tf_y_tau = tf_y_1*yf_y_2
+
+tf_phi_shift_2 = tf.where(tf_y_tau<0, tf_phi_shift_1, tf.where(tf_phi_shift_1<np.pi, tf_phi_shift_1+np.pi, tf_phi_shift_1-np.pi))
+
+model = tf.keras.Model(inputs=tf_zmf_momenta, outputs=tf_phi_shift_2)
 print("Model defined.")
 
 #%% Compile model
@@ -130,6 +151,11 @@ model.compile(optimizer='adam',
               metrics=['mae'])
 
 print("Model compiled.")
+
+#%% Evaluate model
+
+model.evaluate(x, y)
+
 #%% Training model
 
 #train model
