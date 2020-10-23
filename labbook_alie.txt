@@ -152,7 +152,81 @@ note: could it be useful to have parallel layers ? fonctional API ! reuse cross 
 
 
 Next: look at how to efficiently combine the two models (maybe save up the weights ?)
-and also look at functionnal API and how to have parallel layers (ideally have a cross product layer in parrallel, that would be good). 
+and also look at functionnal API and how to have parallel layers (ideally have a cross product layer in parrallel, that would be good). Functionnal API seem perfect for waht we want to do
+
+In order to fic the weights of some layers of the model we can just train it and then fix the weights, check https://www.tensorflow.org/guide/keras/sequential_model
+
+Big question, can we train and then add layers ? Will try that today so yeah it works, all good even !!
+then freeze the top layers 
+
+Using NN to regress Phi_CP_shifted:    #layer 2 to output, botched geometry 
+    Inputs: *pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, df4['y_1_1'], df4['y_1_2'], *pi_2_4Mom_star[1:]
+    Output is 1 node
+    Using 25 epochs on full dataset
+    Using MAE for loss
+    Layer arrangement 3:
+                - dense, 32 nodes, 'relu'
+                - dense, 32 nodes, 'relu'
+                - dense, 3 nodes, (no activation), glue
+		TRAINING + FREEZING (step 2 to step 3)  #ended at 4 (which is bad !)
+                - dense, 32 nodes, 'relu'
+                - dense, 32 nodes, 'relu'
+                - dense, 1 node, (no activation), output
+    Performance with above layer 3 arrangement:  #7s/epoch
+        mse =  2.4661, val_mae = 1.3601
+
+    Layer arrangement 4:
+                - dense, 32 nodes, 'relu'
+                - dense, 32 nodes, 'relu'
+                - dense, 3 nodes, (no activation), glue
+		TRAINING + NO FREEZING (step 2 to step 3) #ended at 4 (which is bad !)
+                - dense, 32 nodes, 'relu'
+                - dense, 32 nodes, 'relu'
+                - dense, 1 node, (no activation), output
+    Performance with above layer 4 arrangement:  #7s/epoch
+        mse =  1.2760, val_mae =  0.7398
+
+	Layer arrangement 5:
+                - dense, 64 nodes, 'relu'
+                - dense, 64 nodes, 'relu'
+                - dense, 3 nodes, (no activation), glue
+		TRAINING + FREEZING (step 2 to step 3)  #ended at mse= 2.5422
+                - dense, 32 nodes, 'relu'
+                - dense, 32 nodes, 'relu'
+                - dense, 1 node, (no activation), output
+    Performance with above layer 3 arrangement:  #7s/epoch
+        mse = 2.2024, val_mae = 1.2758
+
+    Layer arrangement 4:
+                - dense, 64 nodes, 'relu'
+                - dense, 64 nodes, 'relu'
+                - dense, 3 nodes, (no activation), glue
+		TRAINING + NO FREEZING (step 2 to step 3) #ended at mse= 2.1960
+                - dense, 32 nodes, 'relu'
+                - dense, 32 nodes, 'relu'
+                - dense, 1 node, (no activation), output
+    Performance with above layer 4 arrangement:  #7s/epoch
+        mse =  1.1525, val_mae = 0.6885 #not much better 
+
+
+#I think issue with first training !
+
+carefull, we also need to include an output layer (carefull about shape (this is essentially the same as gluing stuff together)
+#question, would definiing the input size of the tensors help the neural network (by telling it what it should be looking for?)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -239,4 +313,3 @@ model.get_weights() might be better ?
 # linear combinaison - matrix algebra to mix two layers into 1
 # will tensor flow optimise it away ?
 # might need an inot layer for eveything we have trained one previously
-

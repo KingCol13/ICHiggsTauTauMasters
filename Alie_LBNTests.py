@@ -176,24 +176,20 @@ phi_CP=np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_
 
 
 #try the different input 'geometry'
-inputs=[phi_CP_unshifted, bigO, y_T]
-#inputs=[*pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, *pi_2_4Mom_star,*pi_1_4Mom_star]
+#inputs=[phi_CP_unshifted, bigO, y_T]
+inputs=[*pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, *pi_2_4Mom_star,*pi_1_4Mom_star]
 #inputs = [*pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, df4['y_1_1'], df4['y_1_2'], *pi_2_4Mom_star[1:]]
 x = np.array(inputs,dtype=np.float32).transpose()
 
-node_nb=32#64
-letter='c'
-step_init=2
-
-#x = tf.reshape(x, (x.shape[0], len(inputs), ))  
-#we will have to be carefull about dimensions is we stop using arrays
+node_nb=32#64#48#32#64
 
 #The target
-target = df4[["aco_angle_1"]]
-#target=[phi_CP_unshifted, bigO, y_T]
-y = np.array(target,dtype=np.float32)#.transpose() #this is the target
+#target = df4[["aco_angle_1"]]
+target=[phi_CP_unshifted, bigO, y_T]
+y = np.array(target,dtype=np.float32).transpose() #this is the target
 
 print("\n the std of y", tf.math.reduce_std(y))
+print("\n the std of x", tf.math.reduce_std(x))
 
 
 #Now we will try and use lbn to get aco_angle_1 from the 'raw data'
@@ -208,11 +204,11 @@ output = ["E", "px", "py", "pz"]
 #define NN model and compile, now merging 2 3 and all the way to output
 model = tf.keras.models.Sequential([
     tf.keras.layers.Dense(node_nb, activation='relu', input_shape=(len(x[0]),)),
-    tf.keras.layers.Dense(node_nb, activation='relu', input_shape=(len(x[0]),)),
+    tf.keras.layers.Dense(node_nb, activation='relu', input_shape=(len(x[0]),)),   
     #tf.keras.layers.Dense(3), #this is the glue
     #tf.keras.layers.Dense(32, activation='relu', input_shape=(len(x[0]),)),
     #tf.keras.layers.Dense(32, activation='relu', input_shape=(len(x[0]),)),
-    tf.keras.layers.Dense(1) #this is the output, maybe phi_CP
+    tf.keras.layers.Dense(3) #this is the output, maybe phi_CP
     #tf.keras.layers.Reshape((4, 4))
 ])
 
@@ -226,10 +222,43 @@ model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
 
 #train model
 history = model.fit(x, y, validation_split = 0.3, epochs = 25)
+print('Model is trained for the first time')
+
+
+
+##### After model is trained, try to add some layers and train again, does it do better then ? ##############
+
+#The target
+target2 = df4[["aco_angle_1"]]
+y2 = np.array(target2,dtype=np.float32)#.transpose() #this is the second target
+
+
+#Adding the new layer to it
+model.add(tf.keras.layers.Dense(32, activation='relu'))
+model.add(tf.keras.layers.Dense(32, activation='relu'))
+model.add(tf.keras.layers.Dense(1))
+print('New layers are added')
+
+# Freeze all layers except the last three.
+for layer in model.layers[:-3]:
+  layer.trainable = False
+
+
+#In doubt: compile it again, maybe not needed
+loss_fn = tf.keras.losses.MeanSquaredError() #try with this function but could do with loss="categorical_crossentropy" instead
+model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
+
+print("\n the std of y2", tf.math.reduce_std(y2))
+
+#and train model again
+history = model.fit(x, y2, validation_split = 0.3, epochs = 25)
+print('Model is trained for the second time (FREEZING)')
+
+
 
 
 #save it and re-use later
-model.save("From_3_to_output.model")
+#model.save("From_2_to_output.model")
 
 
 #plot traning
