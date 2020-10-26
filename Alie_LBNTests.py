@@ -11,6 +11,7 @@ import sys
 sys.path.append("/eos/home-m/acraplet/.local/lib/python2.7/site-packages")
 import uproot 
 import numpy as np
+
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, roc_curve, roc_auc_score
@@ -26,6 +27,12 @@ import keras
 from pylorentz import Momentum4
 from pylorentz import Vector4
 from pylorentz import Position4
+
+
+
+
+
+######################################################################################
 
 
 # loading the tree
@@ -104,8 +111,6 @@ def norm(vector):
 
 ############### ALL Hand-calculated parameters #################
 
-
-
 #The different *initial* 4 vectors, (E,px,py,pz)
 pi_1=np.array([df4["pi_E_1"],df4["pi_px_1"],df4["pi_py_1"],df4["pi_pz_1"]])
 pi_2=np.array([df4["pi_E_2"],df4["pi_px_2"],df4["pi_py_2"],df4["pi_pz_2"]])
@@ -167,6 +172,56 @@ print('len phi', len(phi_CP))
 #additionnal shift that needs to be done do see differences between odd and even scenarios, with y=Energy ratios
 phi_CP=np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_CP)
 
+
+
+######################### Investigate LBN for now #################################
+
+#Question: does having the COM as input help at all the LBN ?
+
+inputs = [pi_1_4Mom, pi_2_4Mom, pi0_1_4Mom, pi0_2_4Mom, ref_COM_4Mom]
+x = np.array(inputs, dtype=np.float32).transpose()
+
+outputs = [pi0_1_4Mom_star, pi0_2_4Mom_star, pi_1_4Mom_star, pi_2_4Mom_star]
+y = np.array(outputs, dtype=np.float32).transpose()
+
+
+LBN_output_features = ["E", "px","py","pz","pt","pair_dy"]
+
+model = tf.keras.models.Sequential([
+    #tf.keras.layers.Flatten( input_shape=(5,4)),
+    LBNLayer((len(x[0]),4,), 120, boost_mode=LBN.PAIRS, features=LBN_output_features),
+    #tf.keras.layers.BatchNormalization(), 
+    tf.keras.layers.Dense(30, activation='relu'),
+    tf.keras.layers.Dense(16),
+    tf.keras.layers.Reshape((4,4))
+])
+
+loss_fn = tf.keras.losses.MeanSquaredError() #try with this function but could do with loss="categorical_crossentropy" instead
+model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
+
+
+#train model
+history = model.fit(x, y, validation_split = 0.3, epochs = 25)
+print('Model is trained for the first time')
+
+
+hist1 = np.array(model(x)[:,0][0])
+hist2 = np.array(y[:,0][0])
+
+
+plt.figure()
+plt.hist(hist1, label = "LBN guess")
+plt.hist(hist2, label = "True")
+plt.title("Histogram of Neural Network Performance for LBN-L1")
+plt.xlabel("Boosted 4 momentum")
+plt.ylabel("Frequency")
+plt.legend()
+plt.savefig("test_LBN.png")
+
+
+
+
+raise END
 
 
 

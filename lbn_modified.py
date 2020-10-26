@@ -825,6 +825,22 @@ class FeatureFactory(FeatureFactoryBase):
 
         # return only upper triangle without diagonal
         return tf.gather(tf.reshape(all_pair_cos, [-1, self.n**2]), self.triu_indices, axis=1)
+    
+    
+    #ADDED BY ALIE !
+    @FeatureFactoryBase.pair_feature
+    def cross_product(self, **opts):
+        """
+        Cross product between each pair of particles
+        """
+        #will need to seriously work with dimensions
+        all_pair_cross = tf.linalg.cross(self._pvec_norm(**opts)[1:-1], 
+                                         self._pvec_norm(**opts)[1:-1])
+        #here no need to transpose one of the vector
+        
+        #need to be clever with what we return, basically only upper triangle without diagonal too
+        return tf.gather(tf.reshape(all_pair_cross, [-1, self.n**2]), self.triu_indices, axis=1)
+    
 
     @FeatureFactoryBase.pair_feature
     def pair_ds(self, **opts):

@@ -220,7 +220,16 @@ carefull, we also need to include an output layer (carefull about shape (this is
 
 I feel like looking into the LBN today, will see about gluing stuff together later. 
 
+Reading the lbn documentation: looks like the lbn only does boosting in frames of the input particles, maybe the issue is that we did not give the sum of the pi 4 vectors as one of the inputs, trying now in Alie_LBNtest.py, hopefully that will be good.
+loss: 235.5696 - mae: 9.1484 - val_loss: 232.2862 - val_mae: 9.1078  #with only 20 combinaisons
+# tryig with 120
+loss: 203.0779 - mae: 9.0949 - val_loss: 198.1972 - val_mae: 8.9473 #very long !
 
+Then modify the LBN to inclue a cross product 'thing'. Line 830: the cross product feature. (now check if it better than a conventional one.) It does work !! On dummy vectors we get a loss and val_mae of 00e0, much better than the normal single dense layer which had a loss of 0.02 and mae of the same order.
+
+Issue, we cannot have other output_features with cross-product (issue in the code, need to mofiy this first before moving to actual data). working on my input shapes (I guess this is the issue, with concat and all) Trieed taking the transpose inside my cross-product function with tf.transpose. (Idea: E and cross_product cannot be called on arrays of the same shape cause of the way I coded cross-product)
+
+Still strong issues... but looks like it does work with .T and then transpose
 
 
 
