@@ -16,6 +16,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, roc_curve, roc_auc_score
 import xgboost as xgb
 
+import lbn_modified as lbn_m
+
+
 import matplotlib as mpl
 #mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -170,24 +173,53 @@ phi_CP=np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_
 
 
 
+
+########################## define functional model ###########################
+
+
+
+model_funct = keras.Model(inputs=inputs, outputs=outputs, name="functional_API")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ################################# Here define the model ##############################
 
 #Now try and include the LBN
 #x = tf.convert_to_tensor(np.array(df4[momenta_features],dtype=np.float32), dtype=np.float32)
 
-
-#try the different input 'geometry'
-#inputs=[phi_CP_unshifted, bigO, y_T]
 inputs=[*pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, *pi_2_4Mom_star,*pi_1_4Mom_star]
 #inputs = [*pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, df4['y_1_1'], df4['y_1_2'], *pi_2_4Mom_star[1:]]
 x = np.array(inputs,dtype=np.float32).transpose()
 
-node_nb=64#48#32#64
+node_nb=32#64#48#32#64
 
 #The target
-target = df4[["aco_angle_1"]]
-#target=[phi_CP_unshifted, bigO, y_T]
-y = np.array(target,dtype=np.float32)#.transpose() #this is the target
+#target = df4[["aco_angle_1"]]
+target=[phi_CP_unshifted, bigO, y_T]
+y = np.array(target,dtype=np.float32).transpose() #this is the target
 
 print("\n the std of y", tf.math.reduce_std(y))
 print("\n the std of x", tf.math.reduce_std(x))
@@ -206,10 +238,10 @@ output = ["E", "px", "py", "pz"]
 model = tf.keras.models.Sequential([
     tf.keras.layers.Dense(node_nb, activation='relu', input_shape=(len(x[0]),)),
     tf.keras.layers.Dense(node_nb, activation='relu', input_shape=(len(x[0]),)),   
-    tf.keras.layers.Dense(3), #this is the glue
-    tf.keras.layers.Dense(32, activation='relu', input_shape=(len(x[0]),)),
-    tf.keras.layers.Dense(32, activation='relu', input_shape=(len(x[0]),)),
-    tf.keras.layers.Dense(1) #this is the output, maybe phi_CP
+    #tf.keras.layers.Dense(3), #this is the glue
+    #tf.keras.layers.Dense(32, activation='relu', input_shape=(len(x[0]),)),
+    #tf.keras.layers.Dense(32, activation='relu', input_shape=(len(x[0]),)),
+    tf.keras.layers.Dense(3) #this is the output, maybe phi_CP
     #tf.keras.layers.Reshape((4, 4))
 ])
 
@@ -230,78 +262,30 @@ print('Model is trained for the first time')
 ##### After model is trained, try to add some layers and train again, does it do better then ? ##############
 
 #The target
-#target2 = df4[["aco_angle_1"]]
-#y2 = np.array(target2,dtype=np.float32)#.transpose() #this is the second target
+target2 = df4[["aco_angle_1"]]
+y2 = np.array(target2,dtype=np.float32)#.transpose() #this is the second target
 
 
 #Adding the new layer to it
-#model.add(tf.keras.layers.Dense(32, activation='relu'))
-#model.add(tf.keras.layers.Dense(32, activation='relu'))
-#model.add(tf.keras.layers.Dense(1))
-#print('New layers are added')
+model.add(tf.keras.layers.Dense(32, activation='relu'))
+model.add(tf.keras.layers.Dense(32, activation='relu'))
+model.add(tf.keras.layers.Dense(1))
+print('New layers are added')
 
 # Freeze all layers except the last three.
-#for layer in model.layers[:-3]:
-  #layer.trainable = False
+for layer in model.layers[:-3]:
+  layer.trainable = False
 
 
 #In doubt: compile it again, maybe not needed
-#loss_fn = tf.keras.losses.MeanSquaredError() #try with this function but could do with loss="categorical_crossentropy" instead
-#model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
+loss_fn = tf.keras.losses.MeanSquaredError() #try with this function but could do with loss="categorical_crossentropy" instead
+model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
 
-#print("\n the std of y2", tf.math.reduce_std(y2))
+print("\n the std of y2", tf.math.reduce_std(y2))
 
 #and train model again
-#history = model.fit(x, y2, validation_split = 0.3, epochs = 25)
-#print('Model is trained for the second time (FREEZING)')
-
-
-
-############################# Try to glue models together ###########################################
-
-#encoder_input = keras.Input(shape=(28, 28, 1), name="original_img") 
-#just copy paste from https://www.tensorflow.org/guide/keras/functional#all_models_are_callable_just_like_layers
-#x = layers.Conv2D(16, 3, activation="relu")(encoder_input)
-#x = layers.Conv2D(32, 3, activation="relu")(x)
-#x = layers.MaxPooling2D(3)(x)
-#x = layers.Conv2D(32, 3, activation="relu")(x)
-#x = layers.Conv2D(16, 3, activation="relu")(x)
-#encoder_output = layers.GlobalMaxPooling2D()(x)
-
-#encoder = keras.Model(encoder_input, encoder_output, name="encoder")
-#encoder.summary()
-
-#decoder_input = keras.Input(shape=(16,), name="encoded_img")
-#x = layers.Reshape((4, 4, 1))(decoder_input)
-#x = layers.Conv2DTranspose(16, 3, activation="relu")(x)
-#x = layers.Conv2DTranspose(32, 3, activation="relu")(x)
-#x = layers.UpSampling2D(3)(x)
-#x = layers.Conv2DTranspose(16, 3, activation="relu")(x)
-#decoder_output = layers.Conv2DTranspose(1, 3, activation="relu")(x)
-
-#decoder = keras.Model(decoder_input, decoder_output, name="decoder")
-#decoder.summary()
-
-#autoencoder_input = keras.Input(shape=(28, 28, 1), name="img")
-#encoded_img = encoder(autoencoder_input)
-#decoded_img = decoder(encoded_img)
-#autoencoder = keras.Model(autoencoder_input, decoded_img, name="autoencoder")
-#autoencoder.summary()
-
-
-
-
-hist1 = np.array(model(x)[:,0])
-hist2 = np.array(y[:,0])
-
-plt.figure()
-plt.hist(hist1, label = "phi_CP component")
-plt.hist(hist2, label = "True phi_CP component")
-plt.title("Histogram of Neural Network Performance for L2-Output")
-plt.xlabel("Phi_CP")
-plt.ylabel("Frequency")
-plt.legend()
-plt.savefig("Good_CP.png")
+history = model.fit(x, y2, validation_split = 0.3, epochs = 25)
+print('Model is trained for the second time (FREEZING)')
 
 
 
@@ -310,7 +294,15 @@ plt.savefig("Good_CP.png")
 #model.save("From_2_to_output.model")
 
 
-#plot result()
+#plot traning
+plt.figure()
+plt.plot(history.history['loss'], label="Training Loss")
+plt.plot(history.history['val_loss'], label="Validation Loss")
+plt.title("Loss on Iteration")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.legend()
+plt.show()
 
 
 

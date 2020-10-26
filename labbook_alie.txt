@@ -214,9 +214,11 @@ Using NN to regress Phi_CP_shifted:    #layer 2 to output, botched geometry
 carefull, we also need to include an output layer (carefull about shape (this is essentially the same as gluing stuff together)
 #question, would definiing the input size of the tensors help the neural network (by telling it what it should be looking for?)
 
+26/10/20
 
+# Look at https://www.tensorflow.org/guide/keras/functional#all_models_are_callable_just_like_layers to glue models together today. Does it make anything better ? What is Conv2D ? also look deeper into the LBN layer (code the cross product)
 
-
+I feel like looking into the LBN today, will see about gluing stuff together later. 
 
 
 
