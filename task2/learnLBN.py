@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 from pylorentz import Momentum4
 from pylorentz import Position4
-from lbn import LBN, LBNLayer
+from klbn import LBN, LBNLayer
 
 # stop tensorflow trying to overfill GPU memory
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -124,12 +124,15 @@ y = tf.transpose(y, [2, 0, 1])
 LBN_output_features = ["E", "px", "py", "pz"]
 
 #define our LBN layer:
-myLBNLayer = LBNLayer((4, 4), 4, n_restframes=1, boost_mode=LBN.PRODUCT, features=LBN_output_features, abs_restframe_weights=False, abs_particle_weights=False)
+myLBNLayer = LBNLayer((4, 4), 4, n_restframes=1, boost_mode=LBN.PRODUCT, features=LBN_output_features)
 
 #define NN model and compile
 model = tf.keras.models.Sequential([
     myLBNLayer,
-    tf.keras.layers.Reshape((4,4))
+    tf.keras.layers.Dense(64),
+    #tf.keras.layers.Dense(64),
+    #tf.keras.layers.Dense(32),
+    tf.keras.layers.Dense(1),
 ])
 
 loss_fn = tf.keras.losses.MeanSquaredError()
