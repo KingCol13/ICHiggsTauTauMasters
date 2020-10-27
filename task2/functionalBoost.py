@@ -17,8 +17,6 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 from pylorentz import Momentum4
-from pylorentz import Position4
-from lbn import LBN, LBNLayer
 
 # stop tensorflow trying to overfill GPU memory
 gpus = tf.config.experimental.list_physical_devices('GPU')
