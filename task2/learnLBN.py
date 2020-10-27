@@ -133,7 +133,6 @@ model = tf.keras.models.Sequential([
 ])
 
 loss_fn = tf.keras.losses.MeanSquaredError()
-#loss_fn = tf.keras.losses.CosineSimilarity()
 model.compile(optimizer='adam',
               loss=loss_fn,
               metrics=['mae'])
