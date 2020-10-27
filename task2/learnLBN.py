@@ -113,10 +113,12 @@ x = tf.transpose(x, [2, 0, 1])
 #y = np.concatenate((IP1_trans, IP2_trans, y_1, y_2),axis=1)#, pi2_ZMF[1:].transpose()), axis=1)
 #y = tf.convert_to_tensor(y, dtype=np.float32)
 #y =  tf.transpose(y, [2, 0, 1])
-y = tf.convert_to_tensor([pi1_ZMF, pi2_ZMF, IP1_ZMF, IP2_ZMF], dtype=np.float32)
-y = tf.transpose(y, [2, 0, 1])
+#y = tf.convert_to_tensor([pi1_ZMF, pi2_ZMF, IP1_ZMF, IP2_ZMF], dtype=np.float32)
+#y = tf.transpose(y, [2, 0, 1])
 #normalise y:
 #y = (y-np.mean(y, axis=0))/np.std(y, axis=0)
+
+y = tf.convert_to_tensor(Phi_Shifted)
 
 #%% Building network
 
@@ -129,7 +131,7 @@ myLBNLayer = LBNLayer((4, 4), 4, n_restframes=1, boost_mode=LBN.PRODUCT, feature
 #define NN model and compile
 model = tf.keras.models.Sequential([
     myLBNLayer,
-    tf.keras.layers.Dense(64),
+    tf.keras.layers.Dense(64, activation="relu"),
     #tf.keras.layers.Dense(64),
     #tf.keras.layers.Dense(32),
     tf.keras.layers.Dense(1),

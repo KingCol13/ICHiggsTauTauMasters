@@ -121,3 +121,8 @@ model.compile(optimizer='adam',
 #%% Evaluate
 
 model.evaluate(x, y)
+
+#%%
+
+def get_m(momentum):
+    return np.sqrt(momentum[0]*momentum[0] - momentum[1]*momentum[1] - momentum[2]*momentum[2] - momentum[3]*momentum[3])
