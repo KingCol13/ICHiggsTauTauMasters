@@ -97,11 +97,11 @@ y = tf.transpose(y, [2, 1, 0])
 LBN_output_features = ["E", "px", "py", "pz"]
 
 #define our LBN layer:
-myLBNLayer = LBNLayer((4, 4), 4, n_restframes=1, boost_mode=LBN.PRODUCT, features=LBN_output_features, abs_restframe_weights=False, abs_particle_weights=False)
+myLBNLayer = LBNLayer((4, 4), 4, n_restframes=1, boost_mode=LBN.PRODUCT, features=LBN_output_features)
 
-#set the weights
-weights = [np.eye(4), np.reshape(np.array([1, 1, 0, 0], dtype=np.float32), (4,1))]
-myLBNLayer.set_weights(weights)
+#set the weights to known values
+#weights = [np.eye(4), np.reshape(np.array([1, 1, 0, 0], dtype=np.float32), (4,1))]
+#myLBNLayer.set_weights(weights)
 
 #define NN model and compile
 model = tf.keras.models.Sequential([
@@ -116,6 +116,20 @@ model.compile(optimizer='adam',
 
 print("Model compiled.")
 
+#%% Training model
+
+#train model
+history = model.fit(x, y, validation_split=0.3, epochs=5)
+
+#plot traning
+plt.figure()
+plt.plot(history.history['loss'], label="Training Loss")
+plt.plot(history.history['val_loss'], label="Validation Loss")
+plt.title("Loss on Iteration")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.legend()
+plt.show()
 #%% Evaluating model
 
 model.evaluate(x, y)
