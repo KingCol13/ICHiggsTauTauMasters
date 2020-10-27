@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Oct 26 16:27:05 2020
+Created on Tue Oct 27 01:55:02 2020
 
 @author: kingsley
 
-Work out the tensorflow maths required to boost particles into a rest frame
+Trying to make LBN work as expected
 """
 
 #%% Initial imports and setup
@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 from pylorentz import Momentum4
 from pylorentz import Position4
-from lbn import LBN, LBNLayer
+from klbn import LBN, LBNLayer
 
 # stop tensorflow trying to overfill GPU memory
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -88,38 +88,39 @@ x = tf.convert_to_tensor([pi_1_lab, pi_2_lab, pi0_1_lab, pi0_2_lab], dtype=np.fl
 x = tf.transpose(x, [2, 0, 1])
 
 y = tf.convert_to_tensor([pi_1_ZMF, pi_2_ZMF, pi0_1_ZMF, pi0_2_ZMF], dtype=np.float32)
-y = tf.transpose(y, [2, 0, 1])
-#%% Define model
+#weird order from LBN
+y = tf.transpose(y, [2, 1, 0])
 
-tf_lab_momenta = tf.keras.Input(shape=(4,4))
+#%% Building network
 
-tf_zmf_momentum = tf_lab_momenta[:,0] + tf_lab_momenta[:,1]
+#features for LBN output
+LBN_output_features = ["E", "px", "py", "pz"]
 
-#optimise this with matrices?
-m = tf.math.sqrt(tf_zmf_momentum[:,0]*tf_zmf_momentum[:,0] - tf.math.reduce_sum(tf.square(tf_zmf_momentum[:,1:]), axis=1))
-gamma = -tf.expand_dims(tf.expand_dims(tf_zmf_momentum[:,0]/m, axis=-1), -1)
-beta = tf.math.sqrt(1 - 1 / (gamma*gamma))
+#define our LBN layer:
+myLBNLayer = LBNLayer((4, 4), 4, n_restframes=1, boost_mode=LBN.PRODUCT, features=LBN_output_features, abs_restframe_weights=False, abs_particle_weights=False)
 
-e = tf.expand_dims(tf.concat((tf.ones_like(tf.expand_dims(m, 1)), -tf.linalg.normalize(tf_zmf_momentum[:,1:], axis=1)[0]), axis=1), -1)
-e_T = tf.transpose(e, [0, 2, 1])
+#set the weights
+weights = [np.eye(4), np.reshape(np.array([1, 1, 0, 0], dtype=np.float32), (4,1))]
+myLBNLayer.set_weights(weights)
 
-I = tf.constant(tf.eye(4,4), tf.float32, shape=(1, 4, 4))
-U = tf.constant([[-1, 0, 0, 0]] + 3 * [[0, -1, -1, -1]], tf.float32, shape=(1, 4, 4))
-                               
-Lambda = I + (U + gamma) * ((U + 1) * beta - U) * (e * e_T)
-
-tf_zmf_momenta = tf.transpose(tf.matmul(Lambda, tf_lab_momenta, transpose_b = True), [0, 2, 1])
-
-test_out = e
-
-model = tf.keras.Model(inputs=tf_lab_momenta, outputs=tf_zmf_momenta) #outputs=tf_zmf_momenta)
-#%% Compile model
+#define NN model and compile
+model = tf.keras.models.Sequential([
+    myLBNLayer,
+    tf.keras.layers.Reshape((4,4)),
+])
 
 loss_fn = tf.keras.losses.MeanSquaredError()
 model.compile(optimizer='adam',
               loss=loss_fn,
               metrics=['mae'])
 
-#%% Evaluate
+print("Model compiled.")
+
+#%% Evaluating model
 
 model.evaluate(x, y)
+
+#%%
+
+def get_m(momentum):
+    return np.sqrt(momentum[0]*momentum[0] - momentum[1]*momentum[1] - momentum[2]*momentum[2] - momentum[3]*momentum[3])
