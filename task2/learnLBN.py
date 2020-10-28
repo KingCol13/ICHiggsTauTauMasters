@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 from pylorentz import Momentum4
 from pylorentz import Position4
-from lbn import LBN, LBNLayer
+from klbn import LBN, LBNLayer
 
 # stop tensorflow trying to overfill GPU memory
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -103,17 +103,22 @@ Phi_Shifted=np.where(y_T<0, Phi_Shifted, np.where(Phi_Shifted<np.pi, Phi_Shifted
 #%% Creating features and targets
 
 # Create x and y tensors
-x = tf.convert_to_tensor([pi1_ZMF, pi2_ZMF, IP1_ZMF, IP2_ZMF], dtype=np.float32)
-x  =  tf.transpose(x, [2, 0, 1])
+x = tf.convert_to_tensor([pi_1, pi_2, IP1, IP2], dtype=np.float32)
+x = tf.transpose(x, [2, 0, 1])
+#x = tf.convert_to_tensor([pi1_ZMF, pi2_ZMF, IP1_ZMF, IP2_ZMF], dtype=np.float32)
+#x  =  tf.transpose(x, [2, 0, 1])
 
-y_1 = y_1.reshape(num_data, 1)
-y_2 = y_2.reshape(num_data, 1)
-y = np.concatenate((IP1_trans, IP2_trans, y_1, y_2),axis=1)#, pi2_ZMF[1:].transpose()), axis=1)
-y = tf.convert_to_tensor(y, dtype=np.float32)
+#y_1 = y_1.reshape(num_data, 1)
+#y_2 = y_2.reshape(num_data, 1)
+#y = np.concatenate((IP1_trans, IP2_trans, y_1, y_2),axis=1)#, pi2_ZMF[1:].transpose()), axis=1)
+#y = tf.convert_to_tensor(y, dtype=np.float32)
 #y =  tf.transpose(y, [2, 0, 1])
-#y = np.array([pi1_ZMF, pi2_ZMF, IP1_ZMF, IP2_ZMF], dtype=np.float32).transpose()
+#y = tf.convert_to_tensor([pi1_ZMF, pi2_ZMF, IP1_ZMF, IP2_ZMF], dtype=np.float32)
+#y = tf.transpose(y, [2, 0, 1])
 #normalise y:
 #y = (y-np.mean(y, axis=0))/np.std(y, axis=0)
+
+y = tf.convert_to_tensor(Phi_Shifted)
 
 #%% Building network
 
@@ -121,14 +126,15 @@ y = tf.convert_to_tensor(y, dtype=np.float32)
 LBN_output_features = ["E", "px", "py", "pz"]
 
 #define our LBN layer:
-#myLBNLayer = LBNLayer((4, 4), 11, boost_mode=LBN.PAIRS, features=LBN_output_features)
+myLBNLayer = LBNLayer((4, 4), 4, n_restframes=1, boost_mode=LBN.PRODUCT, features=LBN_output_features)
 
 #define NN model and compile
 model = tf.keras.models.Sequential([
-    tf.keras.layers.Flatten( input_shape=(4,4)),
-    tf.keras.layers.Dense(300, activation='relu'),
-    tf.keras.layers.Dense(300, activation='relu'),
-    tf.keras.layers.Dense(8)
+    myLBNLayer,
+    tf.keras.layers.Dense(64, activation="relu"),
+    #tf.keras.layers.Dense(64),
+    #tf.keras.layers.Dense(32),
+    tf.keras.layers.Dense(1),
 ])
 
 loss_fn = tf.keras.losses.MeanSquaredError()
@@ -149,6 +155,20 @@ plt.plot(history.history['val_loss'], label="Validation Loss")
 plt.title("Loss on Iteration")
 plt.xlabel("Epoch")
 plt.ylabel("Loss")
+plt.legend()
+plt.show()
+
+#%% Histograms
+
+hist1 = np.array(model(x)[:,0])
+hist2 = np.array(y[:,0])
+
+plt.figure()
+plt.hist(hist1, label = "Predicted First Lambda_perp component", alpha=0.625)
+plt.hist(hist2, label = "True First Lambda_perp component", alpha=0.625)
+plt.title("Histogram of Neural Network Performance for Lambda Perp")
+plt.xlabel("Lambda Perp")
+plt.ylabel("Frequency")
 plt.legend()
 plt.show()
 

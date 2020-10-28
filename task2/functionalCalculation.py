@@ -163,7 +163,7 @@ print("Model compiled.")
 model.evaluate(x, y)
 
 #%% Training model
-"""
+
 #train model
 history = model.fit(x, y, validation_split=0.3, epochs=25)
 
@@ -176,4 +176,3 @@ plt.xlabel("Epoch")
 plt.ylabel("Loss")
 plt.legend()
 plt.show()
-"""

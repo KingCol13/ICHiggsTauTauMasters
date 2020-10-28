@@ -3,3 +3,4 @@
 *.png
 .ipynb_checkpoints
 .tempfile
+*__pycache__*
