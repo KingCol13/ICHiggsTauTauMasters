@@ -238,12 +238,102 @@ The issue is with correspindign shapes. I actually need to compare with p (i.e. 
 Aim for today: fix the cross product issue and have the neural net work from the boosted momenta all the way down to phi_cp.
 Take the time to think !
 
+Now add the cross product feature by comparing  with the px, py, pz features
 
+Trying with true data (and have the cross product features in as well) 
 
+Note: pair_cos would be a useful reference (it should have the same shape but just not the same nb of components in the array)
 
+There is definitely an issue with my output type 
 
+Included x.shape instead of (len(x[0],4,)) the issue was in the flatten bit. 
 
+tensorflow.python.framework.errors_impl.InvalidArgumentError:  Input to reshape is a tensor with 960 values, but the requested shape requires a multiple of 100. 
 
+Is the error when we include the cross product (I guess this makes sense) and then if we do not reshape we have the error that we do not have the same inputs to perform the mae. 
+
+COuld it be that my cross product does not have the right number of axis ? Tried to change to axis=3 since it is a vector... we'll see how that turns out. 
+
+The issue is in the reshape !! but I do not know what shape it is supposed to have ! Try with [-1, self.n**2, 3]
+
+What about that: [-1, 3*self.n**2] instead ?
+
+try thi: yy = tf.gather(tf.reshape(all_pair_cross, [-1, self.n**2, 3]), self.triu_indices, axis=1) instead (rely on pair_ds a bit more)
+
+Next maybe add a dummy energy ?
+
+we are getting there, we have yy now and it is (none, 45, 3) in shape, but now we need to make it of dimension 2
+
+try to use tf.expand_dims(
+    input, axis, name=None
+)
+? actually no, we need to use concat, let's see which one is the best (might end up doing a disgusting for loop)
+
+should we just save the different components separately ? And then it just forms itself ? I think maybe that's the way to go ?
+
+Try with all the componennts separately and only 1 output (looks like the reshape is not happy)
+
+I am understanding a bit better how the lpbn works with different subclasses etc..
+
+Check if the lbn sees the features, well yes it does ! Now checking if the lbn layer sees them as well. 
+
+it does see it too. 
+
+Now need to understand why the layer isn't properly built, has to do with the call functions I guess. 
+
+could it be an issue with this:  Tensor("sequential_1/LBN/LBN/features/transpose_10:0", shape=(None, 45), dtype=float32)
+W1028 12:23:05.614532 139652911208256 functional.py:587] Model was constructed with shape (None, 145487, 4, 4) for input Tensor("LBN_input:0", shape=(None, 145487, 4, 4), dtype=float32), but it was called on an input with incompatible shape (None, 4, 4).
+
+The above is corrected, now we need to check if the lbn does see the right number of features. It sees none !
+
+We had a total of 220 with everything, remove my 3 cross product values: we only have 85.0 then. 
+
+tensorflow.python.framework.errors_impl.InvalidArgumentError:  Input to reshape is a tensor with 960 values, but the requested shape requires a multiple of 300
+
+This is the big issue. 
+
+Yeah in eager, quick execute: the number of output and apparently it does not work here at all because of a shape mismatch
+
+ we are most likely missing _output_tensor_ids for our new outputs... should we just train a neural net to do simple cross products (as in maybe remove 3 things and add our 3 things instead ?) trying that: remove the 3 things we 'don't need' pair_ds, pair_dy etc... check the number of outputs and all that, maybe it'll work but then where would be the problem ?
+ 
+ still 175 ! It is because the other ones are actually not called previously... it is being painfull
+ 
+ Ok: tried to modify pair_dy with cross_z to see if the issue is the name or the shape. It is the shape !
+ 
+ Now just in case: verify it is not name too, no it isn't, only shape ! Need to decipher what shape is required !
+ 
+ Something weird: nan in the training, which one is the problem ? The pair_ds2 was the issue. is it because we had it twice ? no it is not that therefore it is a true issue, stuff with nez name, even identical does not work Wait, maybe we just have something missing, yes we had ! ok it is better now. 
+ 
+ Wait: does changing something in the lbn_modif.py affects the optimisation currently running ? is it my ctrl s ?
+ 
+ No it does fuck up after a bit !!
+ 
+ There seems to be an issue with pair_ds
+ 
+
+Let's see if pair dy works with modifed dz well obv no it doesn't 
+
+now check what is different from the other ones ! Maybe it will work ? at least we see the difference
+
+try to expand the dimension ?beta is 1 each so we definitely need to onlt get one each and then to expand, to ame the 2d matrix and after thta choose from this 2d matrix
+
+try to transpose, basicaly we need only one info per particle new (so (None, 10)) 
+
+Now that we have the right shape for what is our beta we need to go to the next step, is this right ?
+
+We have smth weird when we are expanding dims: (None, 10, 3, 1), yeah that's because i messed up with which one to call
+
+In the cross product thing: actually expand before there !
+
+Yeah try to expand in the cross product (or could go with the x, y and z stuff dirrectly ?)
+
+yeah will go component by component I think but how to do that ??
+
+Yeah go component by component for this we need to be clever components-wise, use tril_range and substract to triu componennts
+
+yess cross product works now !! Can easily have the negative components by taking the tril instead of tri_low
+
+so the cross product is implemented but it doesn't seem to be working very well in the actual traning (is it because of the boosting ?)
 
 
 

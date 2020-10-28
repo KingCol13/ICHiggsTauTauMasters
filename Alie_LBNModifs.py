@@ -8,8 +8,8 @@
 #This file is for experimenting with the LBN aim for today: Make this work and have an algorithm that can include both an LBN *trained* layer and also another layer trained on cross products.
 
 import sys
-#sys.path.append("/eos/home-m/acraplet/.local/lib/python2.7/site-packages")
-#import uproot 
+sys.path.append("/eos/home-m/acraplet/.local/lib/python2.7/site-packages")
+import uproot 
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -19,13 +19,64 @@ import xgboost as xgb
 import matplotlib as mpl
 #mpl.use('Agg')
 import matplotlib.pyplot as plt
-from lbn_modified import LBN, LBNLayer
+from lbn_modified import LBN, LBNLayer, FeatureFactoryBase, FeatureFactory
 import tensorflow as tf
 import keras
 
 from pylorentz import Momentum4
 from pylorentz import Vector4
 from pylorentz import Position4
+
+######################################################################################
+
+
+# loading the tree
+tree = uproot.open("/eos/user/d/dwinterb/SWAN_projects/Masters_CP/MVAFILE_GluGluHToTauTauUncorrelatedDecay_Filtered_tt_2018.root")["ntuple"]
+print("\n Tree loaded\n")
+
+
+# define what variables are to be read into the dataframe
+momenta_features = [ "pi_E_1", "pi_px_1", "pi_py_1", "pi_pz_1", #leading charged pi 4-momentum
+              "pi_E_2", "pi_px_2", "pi_py_2", "pi_pz_2", #subleading charged pi 4-momentum
+              "pi0_E_1","pi0_px_1","pi0_py_1","pi0_pz_1", #leading neutral pi 4-momentum
+              "pi0_E_2","pi0_px_2","pi0_py_2","pi0_pz_2"] #subleading neutral pi 4-momentum
+
+other_features = [ "ip_x_1", "ip_y_1", "ip_z_1",        #leading impact parameter
+                   "ip_x_2", "ip_y_2", "ip_z_2",        #subleading impact parameter
+                   "y_1_1", "y_1_2"]    # ratios of energies
+
+target = [    "aco_angle_1"]  #acoplanarity angle
+    
+selectors = [ "tau_decay_mode_1","tau_decay_mode_2",
+             "mva_dm_1","mva_dm_2","rand","wt_cp_ps","wt_cp_sm",
+            ]
+
+variables4=(momenta_features+other_features+target+selectors) #copying Kinglsey's way cause it is very clean
+
+df4 = tree.pandas.df(variables4)
+
+df4 = df4[
+      (df4["tau_decay_mode_1"] == 1) 
+    & (df4["tau_decay_mode_2"] == 1) 
+    & (df4["mva_dm_1"] == 1) 
+    & (df4["mva_dm_2"] == 1)
+]
+
+print(0.7*len(df4),'This is the length') #up to here we are fine
+
+df_ps = df4[
+      (df4["rand"]<df4["wt_cp_ps"]/2)     #a data frame only including the pseudoscalars
+]
+
+df_sm = df4[
+      (df4["rand"]<df4["wt_cp_sm"]/2)     #data frame only including the scalars
+]
+
+print("panda Data frame created \n")
+
+df4.head()
+
+
 
 
 
@@ -56,62 +107,127 @@ def norm(vector):
     return np.sqrt(vector[0]**2+vector[1]**2+vector[2]**2)
 
 
+
+############### ALL Hand-calculated parameters #################
+
+#The different *initial* 4 vectors, (E,px,py,pz)
+pi_1=np.array([df4["pi_E_1"],df4["pi_px_1"],df4["pi_py_1"],df4["pi_pz_1"]])
+pi_2=np.array([df4["pi_E_2"],df4["pi_px_2"],df4["pi_py_2"],df4["pi_pz_2"]])
+
+pi0_1=np.array([df4["pi0_E_1"],df4["pi0_px_1"],df4["pi0_py_1"],df4["pi0_pz_1"]])
+pi0_2=np.array([df4["pi0_E_2"],df4["pi0_px_2"],df4["pi0_py_2"],df4["pi0_pz_2"]])
+
+#Charged and neutral pion momenta
+pi_1_4Mom=Momentum4(df4["pi_E_1"],df4["pi_px_1"],df4["pi_py_1"],df4["pi_pz_1"])
+pi_2_4Mom=Momentum4(df4["pi_E_2"],df4["pi_px_2"],df4["pi_py_2"],df4["pi_pz_2"])
+
+#Same for the pi0
+pi0_1_4Mom=Momentum4(df4["pi0_E_1"],df4["pi0_px_1"],df4["pi0_py_1"],df4["pi0_pz_1"])
+pi0_2_4Mom=Momentum4(df4["pi0_E_2"],df4["pi0_px_2"],df4["pi0_py_2"],df4["pi0_pz_2"])
+
+#This is the COM frame of the two charged pions w.r.t. which we'll boost
+ref_COM_4Mom=Momentum4(pi_1_4Mom+pi_2_4Mom)
+
+energies=[df4["pi_E_1"],df4["pi_E_2"],df4["pi0_E_1"],df4["pi0_E_2"]]
+
+#Lorentz boost everything in the ZMF of the two charged pions
+pi0_1_4Mom_star=pi0_1_4Mom.boost_particle(-ref_COM_4Mom)
+pi0_2_4Mom_star=pi0_2_4Mom.boost_particle(-ref_COM_4Mom)
+
+#Lorentz boost everything in the ZMF of the two neutral pions
+pi_1_4Mom_star=pi_1_4Mom.boost_particle(-ref_COM_4Mom)
+pi_2_4Mom_star=pi_2_4Mom.boost_particle(-ref_COM_4Mom)
+
+
+#calculating the perpependicular component
+pi0_1_3Mom_star_perp=cross_product(pi0_1_4Mom_star[1:],pi_1_4Mom_star[1:])
+pi0_2_3Mom_star_perp=cross_product(pi0_2_4Mom_star[1:],pi_2_4Mom_star[1:])
+
+#Now normalise:
+pi0_1_3Mom_star_perp=pi0_1_3Mom_star_perp/norm(pi0_1_3Mom_star_perp)
+pi0_2_3Mom_star_perp=pi0_2_3Mom_star_perp/norm(pi0_2_3Mom_star_perp)
+
+pi0_1_4Mom_star_perp=[pi0_1_4Mom_star[0],*pi0_1_3Mom_star_perp]
+pi0_2_4Mom_star_perp=[pi0_1_4Mom_star[0],*pi0_2_3Mom_star_perp]
+
+#Calculating phi_star
+phi_CP_unshifted=np.arccos(dot_product(pi0_1_3Mom_star_perp,pi0_2_3Mom_star_perp))
+
+phi_CP=phi_CP_unshifted
+
+#The energy ratios
+y_T = np.array(df4['y_1_1']*df4['y_1_2'])
+
+#The O variable
+cross=np.array(np.cross(pi0_1_3Mom_star_perp.transpose(),pi0_2_3Mom_star_perp.transpose()).transpose())
+bigO=dot_product(pi_2_4Mom_star[1:],cross)
+
+#perform the shift w.r.t. O* sign
+phi_CP=np.where(bigO>=0, 2*np.pi-phi_CP, phi_CP)#, phi_CP)
+
+print('len phi', len(phi_CP))
+
+
+#additionnal shift that needs to be done do see differences between odd and even scenarios, with y=Energy ratios
+phi_CP=np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_CP)
+
+
+
+
+
 ######################### Invetigate LBN for now ################################
 
 #Question: can we code the lbn so that it does the cross product better than the other layers ?
 
-
-n_data=1000
-x1 = np.random.rand(n_data, 4)
-x2 = np.random.rand(n_data, 4)
-
-print(np.array(x1).shape)
-
+#n_data=1000
+#x1 = np.random.rand(n_data, 4)
+#x2 = np.random.rand(n_data, 4)
+#print(np.array(x1).shape)
 #x=x.T
 #x2=x2.T
-
-x=[[1,2],[1,3],[1,2]]
-
-
-y = [np.cross(x1[i][1:],x2[i][1:]) for i in range(len(x1))]
+#x=[[1,2],[1,3],[1,2]]
+#y = [np.cross(x1[i][1:],x2[i][1:]) for i in range(len(x1))]
 
 
 
 
 ################################# Here define the model ##############################
-inputs = [*x1.T, *x2.T]
-x = np.array(inputs,dtype=np.float32)#.transpose()
-print("\n x shape", x.shape)
+#inputs = [*x1.T, *x2.T]
+#x = np.array(inputs,dtype=np.float32)#.transpose()
+#print("\n x shape", x.shape)
 
 #The target
-target = y #df4[["aco_angle_1"]]
+#target = y #df4[["aco_angle_1"]]
 #target=[phi_CP_unshifted, bigO, y_T]
-y = np.array(target,dtype=np.float32)#.transpose() #this is the target
+#y = np.array(target,dtype=np.float32)#.transpose() #this is the target
 
-print(y.shape)
-print(x.shape)
 
-#raise End
+inputs = [pi_1_4Mom, pi_2_4Mom, pi0_1_4Mom, pi0_2_4Mom]#, ref_COM_4Mom]
+x = np.array(inputs, dtype=np.float32).transpose()
 
-#Now we will try and use lbn to get aco_angle_1 from the 'raw data'
-# start a sequential model
+#outputs = [pi0_1_4Mom_star]#, pi0_2_4Mom_star, pi_1_4Mom_star, pi_2_4Mom_star]
+
+outputs = [pi0_1_3Mom_star_perp, pi0_2_3Mom_star_perp]
+
+#outputs = [pi_1_4Mom_star, pi_2_4Mom_star, pi0_1_4Mom_star, pi0_2_4Mom_star]
+y = np.array(outputs, dtype=np.float32).transpose()
+
 model = tf.keras.models.Sequential()
 
 
 #all the output we want  in some boosted frame
-LBN_output_features = ["cross_product"]#,"E"] #,"px","py","pz"]  
+LBN_output_features = ["E", "py", "px", "pz"]#, "cross_product_z", "cross_product_x", "cross_product_y"]#, "pair_dy", "pair_ds"]#"cross_product_x", "cross_product_y"]#, "cross_product_z"]"pair_dy", 
 
+lbn_layer=LBNLayer((len(x[0]),4,),10, boost_mode=LBN.PAIRS, features=LBN_output_features)
 
-#define NN model and compile, now merging 2 3 and all the way to output
 model = tf.keras.models.Sequential([
-    tf.keras.layers.Flatten(input_shape=x.shape),
-    LBNLayer(4, boost_mode=LBN.PAIRS, features=LBN_output_features),
+    #tf.keras.layers.Flatten(input_shape=x.shape),
+    lbn_layer,
     #tf.keras.layers.BatchNormalization(), 
     tf.keras.layers.Dense(30, activation='relu'),
-    tf.keras.layers.Dense(3)
+    tf.keras.layers.Dense(6),
+    tf.keras.layers.Reshape((3,2))
 ])
-
-#(len(x[0]),4,)
 
 model.summary()
 
@@ -120,10 +236,63 @@ model.summary()
 loss_fn = tf.keras.losses.MeanSquaredError() #try with this function but could do with loss="categorical_crossentropy" instead
 model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
 
+loss, acc = model.evaluate(x,  y, verbose=2)
+print("Untrained model, accuracy: {:5.2f}%".format(100*acc))
+
+
 
 #train model
 history = model.fit(x, y, validation_split = 0.3, epochs = 25)
 print('Model is trained for the first time')
+
+loss, acc = model.evaluate(x,  y, verbose=2)
+
+loss, acc = model.evaluate(x,  y, verbose=2)
+print("Trained model, accuracy: {:5.2f}%".format(100*acc))
+
+
+hist1 = np.array(model(x)[:,0])
+hist2 = np.array(y[:,0])
+
+hist3 = np.array(model(x)[3,0])
+hist4 = np.array(y[3,0])
+
+hist5 = np.array(model(x)[1,2])
+hist6 = np.array(y[1,2])
+
+plt.figure()
+plt.hist(hist1, color = 'b', alpha = 0.5, label = "cross_product component")
+plt.hist(hist2, color = 'r', alpha = 0.5,  label = "True value component")
+
+plt.title("Histogram for no cross product ")
+plt.xlabel("vector")
+plt.ylabel("Frequency")
+plt.legend()
+plt.savefig("Good_CP_all_5.png")
+
+#plot traning
+plt.figure()
+plt.plot(history.history['loss'][10:], label="Training Loss")
+plt.plot(history.history['val_loss'][10:], label="Validation Loss")
+plt.title("Loss on Iteration")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.legend()
+plt.savefig("training_all_5.png")
+
+
+#Checking the fraction of rights
+difference=y-model(x)
+
+
+tf.keras.layers.Reshape((1))
+print(difference)
+
+difference=[*difference]
+
+k=np.where(difference<=10**(-5),1,0)
+print('Fraction of well reconstructed vectors:',np.sum(k)/len(k))
+
 
 
 
