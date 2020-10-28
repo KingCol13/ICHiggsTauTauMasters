@@ -231,6 +231,12 @@ Issue, we cannot have other output_features with cross-product (issue in the cod
 
 Still strong issues... but looks like it does work with .T and then transpose
 
+The issue is with correspindign shapes. I actually need to compare with p (i.e. 3 vectors and not scalars)
+
+28/10/20
+
+Aim for today: fix the cross product issue and have the neural net work from the boosted momenta all the way down to phi_cp.
+Take the time to think !
 
 
 

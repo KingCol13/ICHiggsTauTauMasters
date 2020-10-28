@@ -695,7 +695,9 @@ class FeatureFactory(FeatureFactoryBase):
         """
         Energy.
         """
-        return self.lbn.boosted_particles[..., 0]
+        E=self.lbn.boosted_particles[..., 0]
+        print("\n E shape \n",E.shape)
+        return E
 
     @FeatureFactoryBase.single_feature
     def px(self, **opts):
@@ -834,12 +836,33 @@ class FeatureFactory(FeatureFactoryBase):
         Cross product between each pair of particles
         """
         #will need to seriously work with dimensions
-        all_pair_cross = tf.linalg.cross(self._pvec_norm(**opts)[1:-1], 
-                                         self._pvec_norm(**opts)[1:-1])
+        all_pair_cross = tf.linalg.cross(self._pvec(**opts), 
+                                         self._pvec(**opts))
         #here no need to transpose one of the vector
         
         #need to be clever with what we return, basically only upper triangle without diagonal too
-        return tf.gather(tf.reshape(all_pair_cross, [-1, self.n**2]), self.triu_indices, axis=1)
+        
+        #what about the acrossb != bcrossa? !!
+        
+        #self.n**2 instead of 3
+        #self.n*(self.n-1)/2
+        
+        print(self._pvec(**opts))
+        print("\n")
+        print(all_pair_cross)
+        print("\n")
+        
+        
+        #print((self.n*(self.n-1))/2)
+        
+        yy = tf.gather(tf.reshape(all_pair_cross, [-1, self.n**2]), self.triu_indices, axis=1)
+        
+        print("\n yy shape \n", yy.shape)
+        
+        
+        
+        
+        return yy
     
 
     @FeatureFactoryBase.pair_feature

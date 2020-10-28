@@ -65,24 +65,33 @@ n_data=1000
 x1 = np.random.rand(n_data, 4)
 x2 = np.random.rand(n_data, 4)
 
+print(np.array(x1).shape)
+
 #x=x.T
 #x2=x2.T
 
-y = [np.cross(x1[i][1:-1],x2[i][1:-1]) for i in range(len(x1))]
+x=[[1,2],[1,3],[1,2]]
+
+
+y = [np.cross(x1[i][1:],x2[i][1:]) for i in range(len(x1))]
 
 
 
 
 ################################# Here define the model ##############################
-inputs = [x1, x2]
+inputs = [*x1.T, *x2.T]
 x = np.array(inputs,dtype=np.float32)#.transpose()
-
+print("\n x shape", x.shape)
 
 #The target
 target = y #df4[["aco_angle_1"]]
 #target=[phi_CP_unshifted, bigO, y_T]
-y = np.array(target,dtype=np.float32).transpose() #this is the target
+y = np.array(target,dtype=np.float32)#.transpose() #this is the target
 
+print(y.shape)
+print(x.shape)
+
+#raise End
 
 #Now we will try and use lbn to get aco_angle_1 from the 'raw data'
 # start a sequential model
@@ -90,17 +99,19 @@ model = tf.keras.models.Sequential()
 
 
 #all the output we want  in some boosted frame
-LBN_output_features = ["cross_product"]#,"px","py","pz"]  
+LBN_output_features = ["cross_product"]#,"E"] #,"px","py","pz"]  
 
 
 #define NN model and compile, now merging 2 3 and all the way to output
 model = tf.keras.models.Sequential([
-    #tf.keras.layers.Flatten( input_shape=(5,4)),
-    LBNLayer((len(x[0]),4,), 4, boost_mode=LBN.PAIRS, features=LBN_output_features),
+    tf.keras.layers.Flatten(input_shape=x.shape),
+    LBNLayer(4, boost_mode=LBN.PAIRS, features=LBN_output_features),
     #tf.keras.layers.BatchNormalization(), 
     tf.keras.layers.Dense(30, activation='relu'),
     tf.keras.layers.Dense(3)
 ])
+
+#(len(x[0]),4,)
 
 model.summary()
 
