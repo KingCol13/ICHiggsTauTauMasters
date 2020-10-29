@@ -240,6 +240,10 @@ loss, acc = model.evaluate(x,  y, verbose=2)
 print("Untrained model, accuracy: {:5.2f}%".format(100*acc))
 
 
+#set the weights to known values, thanks kinsgley
+#weights = [np.eye(4), np.reshape(np.array([1, 1, 0, 0], dtype=np.float32), (4,1))]
+#myLBNLayer.set_weights(weights)
+
 
 #train model
 history = model.fit(x, y, validation_split = 0.3, epochs = 25)
