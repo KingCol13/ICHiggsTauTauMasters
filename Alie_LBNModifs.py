@@ -209,7 +209,7 @@ model = tf.keras.models.Sequential([
     tf.keras.layers.Dense(64, activation='relu'),
     #tf.keras.layers.Dense(32, activation='sigmoid'),
     tf.keras.layers.Dense(6),
-    tf.keras.layers.Reshape((3,2)) #here might be 2,3 instead
+    tf.keras.layers.Reshape((2,3)) #here might be 2,3 instead, yes indeed
 ])
 
 model.summary()
