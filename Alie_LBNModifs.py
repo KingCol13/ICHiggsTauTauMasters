@@ -179,7 +179,7 @@ phi_CP=np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_
 #The target
 #target = y #df4[["aco_angle_1"]]
 #target=[phi_CP_unshifted, bigO, y_T]
-inputs = np.array([pi_1_4Mom_star, pi_2_4Mom_star, pi0_1_4Mom_star, pi0_2_4Mom_star])#, ref_COM_4Mom]
+inputs = [pi_1_4Mom_star, pi_2_4Mom_star, pi0_1_4Mom_star, pi0_2_4Mom_star]#, ref_COM_4Mom]
 
 
 #for cross product to work the way it is currently coded we need to input the data like this
@@ -202,11 +202,14 @@ LBN_output_features = ["cross_product_z", "cross_product_x", "cross_product_y"]
 
 lbn_layer=LBNLayer((len(x[0]),4,), 4, features=LBN_output_features)
 
+#(len(x[0]),4,)
+
 model = tf.keras.models.Sequential([
     #tf.keras.layers.Flatten(input_shape=x.shape),
     lbn_layer,
     #tf.keras.layers.BatchNormalization(), 
-    tf.keras.layers.Dense(64, activation='relu'),
+    #tf.keras.layers.Dense(32, activation = 'relu', input_shape = x.shape),
+    #tf.keras.layers.Dense(64, activation='relu'),
     #tf.keras.layers.Dense(32, activation='sigmoid'),
     tf.keras.layers.Dense(6),
     tf.keras.layers.Reshape((2,3)) #here might be 2,3 instead, yes indeed
@@ -257,10 +260,10 @@ difference=y[:,0,0]-model(x)[:,0,0]
 
 difference=np.reshape(difference, [-1])
 
-k=np.where(difference<=10**(-3),1,0)
+k=np.where(difference<=10**(-5),1,0)
 print('Fraction of well reconstructed vectors:',np.sum(k)/len(k))
 
-plt.hist(hist1, alpha = 0.5, label = "cross_product component \n fraction of reco at $10^{-3}$:%.3f"%(np.sum(k)/len(k)))
+plt.hist(hist1, alpha = 0.5, label = "cross_product component \n fraction of reco at $10^{-5}$:%.3f"%(np.sum(k)/len(k)))
 plt.hist(hist2, alpha = 0.5,  label = "True value component")
 plt.title("Histogram for cross product ")
 plt.xlabel("Vector component")
