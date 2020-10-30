@@ -167,6 +167,9 @@ class My_vectors:
         print(self.px)
         self.py = vector_list[2, ...]
         self.pz = vector_list[3, ...]
+        self.pvect = vector_list[1:, ...]
+        
+        print(self.pvect, 'this is pvect')
         self.n = len(self.px[0]) 
         
         print(self.n)
@@ -182,14 +185,7 @@ class My_vectors:
         """
         #we need to expand in 2d to have the right matrix arrangement
         cross_z = tf.expand_dims(self.px, axis=-1)*tf.expand_dims(self.py, axis=-2)
-        
-        print(self.px.shape, 'this is px shape')
-        
-        #print(tf.expand_dims(self.px, axis=-1))
-        #print(tf.expand_dims(self.py, axis=-2))
-        
-        #print("This is cross_z", cross_z)
-
+       
         #only transpose the two last sides, we want some pairwise operations
         cross_z_T=tf.einsum('aij -> aji', cross_z) 
         
@@ -206,15 +202,8 @@ class My_vectors:
         #we need to expand in 2d to have the right matrix arrangement
         cross_x = tf.expand_dims(self.py, axis=-1)*tf.expand_dims(self.pz, axis=-2)
         
-        print(tf.expand_dims(self.py, axis=-1)[0], 'this should be y1 expanded ')
-        print(tf.expand_dims(self.pz, axis=-2)[0], 'this should be z2 expanded')
-        
-        cross_x = tf.einsum('aik, akj -> aij', tf.expand_dims(self.py, axis=-1),
-                                                tf.expand_dims(self.pz, axis=-2))
-        
-        print(cross_x[0][0][1], 'this should be y1z2 with einsum')
-        print(cross_x[0][1][0], 'this should be y2z1 with einsum')
-        
+#         cross_x = tf.einsum('aik, akj -> aij', tf.expand_dims(self.py, axis=-1),
+#                                                 tf.expand_dims(self.pz, axis=-2))
 
         #only transpose the two last sides, we want some pairwise operations
         cross_x_T=tf.einsum('aij -> aji', cross_x) 

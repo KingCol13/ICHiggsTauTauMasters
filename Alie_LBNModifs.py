@@ -19,7 +19,7 @@ import xgboost as xgb
 import matplotlib as mpl
 #mpl.use('Agg')
 import matplotlib.pyplot as plt
-from lbn_modified2 import LBN, LBNLayer, FeatureFactoryBase, FeatureFactory
+from Cross_product import LBN, LBNLayer, FeatureFactoryBase, FeatureFactory
 import tensorflow as tf
 import keras
 
@@ -175,62 +175,40 @@ phi_CP=np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_
 
 
 
-######################### Invetigate LBN for now ################################
-
-#Question: can we code the lbn so that it does the cross product better than the other layers ?
-
-#n_data=1000
-#x1 = np.random.rand(n_data, 4)
-#x2 = np.random.rand(n_data, 4)
-#print(np.array(x1).shape)
-#x=x.T
-#x2=x2.T
-#x=[[1,2],[1,3],[1,2]]
-#y = [np.cross(x1[i][1:],x2[i][1:]) for i in range(len(x1))]
-
-
-
-
 ################################# Here define the model ##############################
-#inputs = [*x1.T, *x2.T]
-#x = np.array(inputs,dtype=np.float32)#.transpose()
-#print("\n x shape", x.shape)
-
 #The target
 #target = y #df4[["aco_angle_1"]]
 #target=[phi_CP_unshifted, bigO, y_T]
-#y = np.array(target,dtype=np.float32)#.transpose() #this is the target
+inputs = np.array([pi_1_4Mom_star, pi_2_4Mom_star, pi0_1_4Mom_star, pi0_2_4Mom_star])#, ref_COM_4Mom]
 
-
-inputs = np.array([pi_1_4Mom, pi_2_4Mom, pi0_1_4Mom, pi0_2_4Mom])#, ref_COM_4Mom]
 
 #for cross product to work the way it is currently coded we need to input the data like this
-inputs = np.einsum("aij -> ija", inputs) 
-x = np.array(inputs,dtype=np.float32)
+inputs = np.einsum("aij -> jai", inputs) 
+x = np.array(inputs,dtype=np.float32)#.transpose()
 
 #outputs = [pi0_1_4Mom_star]#, pi0_2_4Mom_star, pi_1_4Mom_star, pi_2_4Mom_star]
 outputs = [pi0_1_3Mom_star_perp, pi0_2_3Mom_star_perp]
-#outputs = [pi_1_4Mom_star, pi_2_4Mom_star, pi0_1_4Mom_star, pi0_2_4Mom_star]
 
-#need to do the same with y
-outputs = np.einsum("aij -> ija", outputs) 
-y = np.array(outputs, dtype=np.float32).transpose()
+#need to do the same with y, this is the right geometry!
+outputs = np.einsum("aij -> jia", outputs) 
+y = np.array(outputs, dtype=np.float32)#.transpose()
 
 model = tf.keras.models.Sequential()
 
 
 #all the output we want  in some boosted frame
-LBN_output_features = ["E", "py", "px", "pz", "cross_product_z", "cross_product_x", "cross_product_y"]#, "pair_dy", "pair_ds"]#"cross_product_x", "cross_product_y"]#, "cross_product_z"]"pair_dy", 
+LBN_output_features = ["cross_product_z", "cross_product_x", "cross_product_y"] 
 
-lbn_layer=LBNLayer((len(x[0]),4,),4, boost_mode=LBN.PAIRS, features=LBN_output_features)
+lbn_layer=LBNLayer((len(x[0]),4,),4, features=LBN_output_features)
 
 model = tf.keras.models.Sequential([
     #tf.keras.layers.Flatten(input_shape=x.shape),
     lbn_layer,
     #tf.keras.layers.BatchNormalization(), 
-    tf.keras.layers.Dense(300, activation='relu'),
+    tf.keras.layers.Dense(64, activation='relu'),
+    tf.keras.layers.Dense(64, activation='sigmoid'),
     tf.keras.layers.Dense(6),
-    tf.keras.layers.Reshape((3,2))
+    tf.keras.layers.Reshape((3,2)) #here might be 2,3 instead
 ])
 
 model.summary()
@@ -251,16 +229,14 @@ print("Untrained model, accuracy: {:5.2f}%".format(100*acc))
 
 # #train model
 history = model.fit(x, y, validation_split = 0.3, epochs = 25)
-# print('Model is trained for the first time')
 
-# loss, acc = model.evaluate(x,  y, verbose=2)
 
 # loss, acc = model.evaluate(x,  y, verbose=2)
 # print("Trained model, accuracy: {:5.2f}%".format(100*acc))
 
 
-# hist1 = np.array(model(x)[:,0])
-# hist2 = np.array(y[:,0])
+hist1 = np.array(model(x)[:,0,0])
+hist2 = np.array(y[:,0,0])
 
 # hist3 = np.array(model(x)[3,0])
 # hist4 = np.array(y[3,0])
@@ -268,15 +244,29 @@ history = model.fit(x, y, validation_split = 0.3, epochs = 25)
 # hist5 = np.array(model(x)[1,2])
 # hist6 = np.array(y[1,2])
 
-# plt.figure()
-# plt.hist(hist1, color = 'b', alpha = 0.5, label = "cross_product component")
-# plt.hist(hist2, color = 'r', alpha = 0.5,  label = "True value component")
+plt.figure()
 
-# plt.title("Histogram for no cross product ")
-# plt.xlabel("vector")
-# plt.ylabel("Frequency")
-# plt.legend()
-# plt.savefig("Good_CP_all_5.png")
+
+#Checking the fraction of rights
+difference=y[:,0,0]-model(x)[:,0,0]
+
+
+# tf.keras.layers.Reshape((1))
+# print(difference)
+
+difference=np.reshape(difference, [-1])
+
+k=np.where(difference<=10**(-3),1,0)
+print('Fraction of well reconstructed vectors:',np.sum(k)/len(k))
+
+plt.hist(hist1, alpha = 0.5, label = "cross_product component \n fraction of reco at $10^{-3}$:%.3f"%(np.sum(k)/len(k)))
+plt.hist(hist2, alpha = 0.5,  label = "True value component")
+plt.title("Histogram for cross product ")
+plt.xlabel("Vector component")
+plt.ylabel("Frequency")
+plt.grid()
+plt.legend()
+plt.savefig("cross_product_sigm.png")
 
 # #plot traning
 # plt.figure()
@@ -289,17 +279,6 @@ history = model.fit(x, y, validation_split = 0.3, epochs = 25)
 # plt.savefig("training_all_5.png")
 
 
-# #Checking the fraction of rights
-# difference=y-model(x)
-
-
-# tf.keras.layers.Reshape((1))
-# print(difference)
-
-# difference=[*difference]
-
-# k=np.where(difference<=10**(-5),1,0)
-# print('Fraction of well reconstructed vectors:',np.sum(k)/len(k))
 
 
 
