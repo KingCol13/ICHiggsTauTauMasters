@@ -190,7 +190,7 @@ x = np.array(inputs,dtype=np.float32)#.transpose()
 outputs = [pi0_1_3Mom_star_perp, pi0_2_3Mom_star_perp]
 
 #need to do the same with y, this is the right geometry!
-outputs = np.einsum("aij -> jia", outputs) 
+outputs = np.einsum("aij -> jai", outputs) 
 y = np.array(outputs, dtype=np.float32)#.transpose()
 
 model = tf.keras.models.Sequential()
@@ -199,14 +199,15 @@ model = tf.keras.models.Sequential()
 #all the output we want  in some boosted frame
 LBN_output_features = ["cross_product_z", "cross_product_x", "cross_product_y"] 
 
-lbn_layer=LBNLayer((len(x[0]),4,),4, features=LBN_output_features)
+
+lbn_layer=LBNLayer((len(x[0]),4,), 4, features=LBN_output_features)
 
 model = tf.keras.models.Sequential([
     #tf.keras.layers.Flatten(input_shape=x.shape),
     lbn_layer,
     #tf.keras.layers.BatchNormalization(), 
     tf.keras.layers.Dense(64, activation='relu'),
-    tf.keras.layers.Dense(64, activation='sigmoid'),
+    #tf.keras.layers.Dense(32, activation='sigmoid'),
     tf.keras.layers.Dense(6),
     tf.keras.layers.Reshape((3,2)) #here might be 2,3 instead
 ])
@@ -266,17 +267,17 @@ plt.xlabel("Vector component")
 plt.ylabel("Frequency")
 plt.grid()
 plt.legend()
-plt.savefig("cross_product_sigm.png")
+plt.savefig("cross_product.png")
 
-# #plot traning
-# plt.figure()
-# plt.plot(history.history['loss'][10:], label="Training Loss")
-# plt.plot(history.history['val_loss'][10:], label="Validation Loss")
-# plt.title("Loss on Iteration")
-# plt.xlabel("Epoch")
-# plt.ylabel("Loss")
-# plt.legend()
-# plt.savefig("training_all_5.png")
+#plot traning
+plt.figure()
+plt.plot(history.history['loss'][10:], label="Training Loss")
+plt.plot(history.history['val_loss'][10:], label="Validation Loss")
+plt.title("Loss on Iteration")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.legend()
+plt.savefig("training_cross_product.png")
 
 
 
