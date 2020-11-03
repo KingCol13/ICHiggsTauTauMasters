@@ -698,14 +698,14 @@ class FeatureFactory(FeatureFactoryBase):
         Energy.
         """
         E=self.lbn.boosted_particles[..., 0]
-        print("\n E shape \n",E.shape)
+        print("\n self.lbn.boosted_particles shape \n",self.lbn.boosted_particles.shape)
         return E
 
     @FeatureFactoryBase.single_feature
     def px(self, **opts):
         """
         Momentum component x.
-        """
+        """        
         return self.lbn.boosted_particles[..., 1]
 
     @FeatureFactoryBase.single_feature
@@ -742,7 +742,7 @@ class FeatureFactory(FeatureFactoryBase):
         Absolute momentum.
         """
         return self._p2(**opts)**0.5
-
+    
     @FeatureFactoryBase.single_feature
     def pt(self, **opts):
         """
@@ -785,6 +785,94 @@ class FeatureFactory(FeatureFactoryBase):
         Relativistic gamma factor, 1 / sqrt(1-beta**2) or E / m.
         """
         return self.E(**opts) / tf.maximum(self.m(**opts), self.epsilon)
+    
+    
+    ####################### Identification of particles ########################
+    # careful, the inputs must be pi0_1, pi1, pi02, pi2 in this order ! #####
+    
+    @FeatureFactoryBase.single_feature
+    def pi0_1_star(self, **opts):
+        """
+        Four momenta of the leading neutral pion.
+        """
+        return self.lbn.boosted_particles[:, 0, :]
+    
+    @FeatureFactoryBase.single_feature
+    def pi_1_star(self, **opts):
+        """
+        Four momenta of the leading charged pion.
+        """
+        return self.lbn.boosted_particles[:, 1, :]
+    
+    @FeatureFactoryBase.single_feature
+    def pi0_2_star(self, **opts):
+        """
+        Four momenta of the subleading neutral pion.
+        """
+        return self.lbn.boosted_particles[:, 2, :]
+    
+    @FeatureFactoryBase.single_feature
+    def pi_2_star(self, **opts):
+        """
+        Four momenta of the subleading charged pion.
+        """
+        return self.lbn.boosted_particles[:, 3, :]
+    
+############################## caluclate lambda_ perp ##################################
+
+    @FeatureFactoryBase.single_feature
+    def lambda_1_perp(self, **opts):
+        """
+        Normalised three vector perpendicular to the plane of the two leading pions.
+        """
+        #lambda_1_perp = np.cross(self.pi0_1_star()[:, 1:], self.pi_1_star()[:, 1:])
+        #lambda_1_perp/np.norm(lambda_1_perp)    
+        return tf.math.l2_normalize(tf.linalg.cross(self.pi0_1_star()[:, 1:], self.pi_1_star()[:, 1:]), axis=1)
+    
+    @FeatureFactoryBase.single_feature
+    def lambda_2_perp(self, **opts):
+        """
+        Normalised three vector perpendicular to the plane of the two subleading pions.
+        """
+#         lambda_2_perp = np.cross(self.pi0_2_star()[:, 1:], self.pi_2_star()[:, 1:])
+#         return lambda_2_perp/np.norm(lambda_2_perp)
+        return tf.math.l2_normalize(tf.linalg.cross(self.pi0_2_star()[:, 1:], self.pi_2_star()[:, 1:]), axis=1)
+    
+################################### Calculate phi_star #######################################
+
+    @FeatureFactoryBase.single_feature
+    def phi_cp_un(self, **opts):
+        """
+        Non-shifted phi_cp angle.
+        """
+        phi_cp_un = tf.math.acos(tf.reduce_sum(tf.math.multiply(self.lambda_1_perp(), self.lambda_2_perp()), axis=1))
+        big_O = tf.math.reduce_sum(tf.math.multiply(tf.linalg.cross(self.lambda_1_perp(), self.lambda_2_perp()), self.pi_2_star()[:, 1:]), axis=1)
+        
+        return tf.convert_to_tensor([phi_cp_un, big_O], dtype="float32")
+    
+    
+#     @FeatureFactoryBase.single_feature
+#     def big_O(self, **opts):
+#         """
+#         The big O variable, latter to be used for shifts.
+#         """
+#         return tf.math.reduce_sum(tf.math.multiply(tf.linalg.cross(self.lambda_1_perp(), self.lambda_2_perp()), self.pi_2_star()[:, 1:]), axis=1)
+    
+#     @FeatureFactoryBase.single_feature
+#     def y_tau(self, **opts):
+#         """
+#         The y_tau variable, latter to be used for shifts.
+#         """
+#         tf_y_1 = (self.pi_1_star()[:,0] - self.pi0_1_star()[:,0])/(self.pi_1_star()[:,0] + self.pi0_1_star()[:,0])
+#         tf_y_2 = (self.pi_2_star()[:,0] - self.pi0_2_star()[:,0])/(self.pi_2_star()[:,0] + self.pi0_2_star()[:,0])
+        
+#         return tf_y_1*tf_y_2
+    
+    
+    
+
+#######################################################################################################
+    
 
     @FeatureFactoryBase.pair_feature
     def pair_dr(self, **opts):
@@ -833,54 +921,54 @@ class FeatureFactory(FeatureFactoryBase):
         return yy
 
     
-    #ADDED BY ALIE ! #next: include negative part ?
-    @FeatureFactoryBase.pair_feature
-    def cross_product_z(self, **opts):
-        """
-        Z component of cross product between momenta of each pair of particles
-        """
-        #we need to expand in 2d to have the right matrix arrangement
-        cross_z = tf.expand_dims(self.px(**opts), axis=-1)*tf.expand_dims(self.py(**opts), axis=-2)
+#     #ADDED BY ALIE ! #next: include negative part ?
+#     @FeatureFactoryBase.pair_feature
+#     def cross_product_z(self, **opts):
+#         """
+#         Z component of cross product between momenta of each pair of particles
+#         """
+#         #we need to expand in 2d to have the right matrix arrangement
+#         cross_z = tf.expand_dims(self.px(**opts), axis=-1)*tf.expand_dims(self.py(**opts), axis=-2)
 
-        #only transpose the two last sides, we want some pairwise operations
-        cross_z_T=tf.einsum('aij -> aji', cross_z) 
+#         #only transpose the two last sides, we want some pairwise operations
+#         cross_z_T=tf.einsum('aij -> aji', cross_z) 
         
-        #and then substract and keep the right half of the triangle to have cross product
-        yy = tf.gather(tf.reshape(cross_z-cross_z_T, [-1, self.n**2]), self.triu_indices, axis=1)
-        return yy
+#         #and then substract and keep the right half of the triangle to have cross product
+#         yy = tf.gather(tf.reshape(cross_z-cross_z_T, [-1, self.n**2]), self.triu_indices, axis=1)
+#         return yy
     
-    #ADDED BY ALIE ! #next: make it actually clean and not repeat the same thing 3 times ?
-    @FeatureFactoryBase.pair_feature
-    def cross_product_x(self, **opts):
-        """
-        X component of cross product between momenta of each pair of particles
-        """
-        #we need to expand in 2d to have the right matrix arrangement
-        cross_x = tf.expand_dims(self.py(**opts), axis=-1)*tf.expand_dims(self.pz(**opts), axis=-2)
+#     #ADDED BY ALIE ! #next: make it actually clean and not repeat the same thing 3 times ?
+#     @FeatureFactoryBase.pair_feature
+#     def cross_product_x(self, **opts):
+#         """
+#         X component of cross product between momenta of each pair of particles
+#         """
+#         #we need to expand in 2d to have the right matrix arrangement
+#         cross_x = tf.expand_dims(self.py(**opts), axis=-1)*tf.expand_dims(self.pz(**opts), axis=-2)
 
-        #only transpose the two last sides, we want some pairwise operations
-        cross_x_T=tf.einsum('aij -> aji', cross_x) 
+#         #only transpose the two last sides, we want some pairwise operations
+#         cross_x_T=tf.einsum('aij -> aji', cross_x) 
         
-        #and then substract and keep the right half of the triangle to have cross product
-        yy = tf.gather(tf.reshape(cross_x-cross_x_T, [-1, self.n**2]), self.triu_indices, axis=1)
-        return yy
+#         #and then substract and keep the right half of the triangle to have cross product
+#         yy = tf.gather(tf.reshape(cross_x-cross_x_T, [-1, self.n**2]), self.triu_indices, axis=1)
+#         return yy
     
     
-     #ADDED BY ALIE !
-    @FeatureFactoryBase.pair_feature
-    def cross_product_y(self, **opts):
-        """
-        X component of cross product between momenta of each pair of particles
-        """
-        #we need to expand in 2d to have the right matrix arrangement
-        cross_y = tf.expand_dims(self.pz(**opts), axis=-1)*tf.expand_dims(self.px(**opts), axis=-2)
+#      #ADDED BY ALIE !
+#     @FeatureFactoryBase.pair_feature
+#     def cross_product_y(self, **opts):
+#         """
+#         X component of cross product between momenta of each pair of particles
+#         """
+#         #we need to expand in 2d to have the right matrix arrangement
+#         cross_y = tf.expand_dims(self.pz(**opts), axis=-1)*tf.expand_dims(self.px(**opts), axis=-2)
 
-        #only transpose the two last sides, we want some pairwise operations
-        cross_y_T=tf.einsum('aij -> aji', cross_y) 
+#         #only transpose the two last sides, we want some pairwise operations
+#         cross_y_T=tf.einsum('aij -> aji', cross_y) 
         
-        #and then substract and keep the right half of the triangle to have cross product
-        yy = tf.gather(tf.reshape(cross_y-cross_y_T, [-1, self.n**2]), self.triu_indices, axis=1)
-        return yy
+#         #and then substract and keep the right half of the triangle to have cross product
+#         yy = tf.gather(tf.reshape(cross_y-cross_y_T, [-1, self.n**2]), self.triu_indices, axis=1)
+#         return yy
 
 
     @FeatureFactoryBase.pair_feature

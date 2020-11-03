@@ -209,7 +209,7 @@ print("\n the std of x", tf.math.reduce_std(x))
 model = tf.keras.models.Sequential()
 
 #all the output we want  in some boosted frame
-LBN_output_features = ["E", "px", "py", "pz", "lambda_1_perp", "lambda_2_perp", "phi_cp_un"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", "
+LBN_output_features = ["E", "lambda_1_perp", "lambda_2_perp"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", ", "px", "py", "pz", 
 
 
 #define NN model and compile, now merging 2 3 and all the way to output
@@ -235,15 +235,10 @@ history = model.fit(x, y, validation_split = 0.3, epochs = 25)
 print('Model is trained.')
 
 
-
 def frac(i, d = -2):
     difference = y[:, 0, i]-model(x)[:, 0, i]
     difference = np.reshape(difference, [-1])
-    print(difference[:10])
     l = np.where(abs(difference)<=10**(d),1,0)
-    print(l[:10])
-    
-    print (float(float(np.sum(l))/len(l)))
     return float(float(np.sum(l))/len(l))
 
 hist1 = np.array(model(x)[:, 0, 0])
@@ -259,15 +254,15 @@ hist6 = np.array(y[:, 0, 2])
 hist7 = np.array(model(x)[:, 0, 3])
 hist8 = np.array(y[:, 0, 3])
 
-dd = 0
-dd2 = -2
+dd = 1
+dd2 = 2
 
 fig = plt.figure(figsize=(10,10), frameon = False)
-plt.title("Neural Network Performance for lambda perp \n basics + normalised perp + tier2 features (25 epochs)")
-plt.axis('off')
+plt.title("Neural Network Performance for lambda perp \n E + normalised perp features (25 epochs)")
+plt.axis("off")
 
 ax = fig.add_subplot(2,2,1)#, constrained_layout=True)
-plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN E component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd, frac(0, dd), dd2, frac(0, dd2)))
+plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN E component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd,frac(0, dd), dd2,frac(0, dd2)))
 plt.hist(hist2, bins = 100, alpha = 0.5, label = "True E component")
 plt.ylabel("Frequency")
 plt.grid()
@@ -294,8 +289,7 @@ plt.grid()
 plt.legend()
 plt.xlabel("4Vector component")
 
-
-plt.savefig("Lambda_basics_perpN_tier2.png")
+plt.savefig("Lambda_E_perpN.png")
 
 
 

@@ -335,6 +335,17 @@ yess cross product works now !! Can easily have the negative components by takin
 
 so the cross product is implemented but it doesn't seem to be working very well in the actual traning (is it because of the boosting ?)
 
+2/10
+
+
+The corss product is working but now we've actually got to code the whole aco angle, note: we know which particle is which !
+
+for now just ordering in the code but it'll be usefull for later to have a more rigourous way of doing it ? (Ask Kingsley)
+
+LBNModifs has all the cross product but we'll now work with LBNTesting to include the aco_angle guesses.
+
+Relying on Kingsley's functionnal_calculations (same but made in tensorflow)
+
 
 
 
