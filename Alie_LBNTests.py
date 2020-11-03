@@ -7,6 +7,7 @@
 
 #This file is for experimenting with the LBN aim for today: Make this work and have an algorithm that can include both an LBN *trained* layer and also another layer trained on cross products.
 
+
 import sys
 sys.path.append("/eos/home-m/acraplet/.local/lib/python2.7/site-packages")
 import uproot 
@@ -18,16 +19,18 @@ from sklearn.metrics import classification_report, roc_curve, roc_auc_score
 import xgboost as xgb
 
 import matplotlib as mpl
-#mpl.use('Agg')
+mpl.use('Agg')
 import matplotlib.pyplot as plt
-from lbn import LBN, LBNLayer
+from lbn_modified import LBN, LBNLayer
 import tensorflow as tf
 import keras
 
+
+#for some reason pylorentz is installed somewhere differently ?
+sys.path.append("/eos/home-a/acraplet/.local/lib/python2.7/site-packages")
 from pylorentz import Momentum4
 from pylorentz import Vector4
 from pylorentz import Position4
-
 
 
 
@@ -148,8 +151,8 @@ pi0_2_3Mom_star_perp=cross_product(pi0_2_4Mom_star[1:],pi_2_4Mom_star[1:])
 pi0_1_3Mom_star_perp=pi0_1_3Mom_star_perp/norm(pi0_1_3Mom_star_perp)
 pi0_2_3Mom_star_perp=pi0_2_3Mom_star_perp/norm(pi0_2_3Mom_star_perp)
 
-pi0_1_4Mom_star_perp=[pi0_1_4Mom_star[0],*pi0_1_3Mom_star_perp]
-pi0_2_4Mom_star_perp=[pi0_1_4Mom_star[0],*pi0_2_3Mom_star_perp]
+pi0_1_4Mom_star_perp = [pi0_1_4Mom_star[0], pi0_1_3Mom_star_perp[0], pi0_1_3Mom_star_perp[1], pi0_1_3Mom_star_perp[2]]
+pi0_2_4Mom_star_perp = [pi0_1_4Mom_star[0], pi0_2_3Mom_star_perp[0], pi0_2_3Mom_star_perp[1], pi0_2_3Mom_star_perp[2]]
 
 #Calculating phi_star
 phi_CP_unshifted=np.arccos(dot_product(pi0_1_3Mom_star_perp,pi0_2_3Mom_star_perp))
@@ -174,75 +177,28 @@ phi_CP=np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_
 
 
 
-######################### Investigate LBN for now #################################
-
-#Question: does having the COM as input help at all the LBN ?
-
-inputs = [pi_1_4Mom, pi_2_4Mom, pi0_1_4Mom, pi0_2_4Mom, ref_COM_4Mom]
-x = np.array(inputs, dtype=np.float32).transpose()
-
-outputs = [pi0_1_4Mom_star, pi0_2_4Mom_star, pi_1_4Mom_star, pi_2_4Mom_star]
-y = np.array(outputs, dtype=np.float32).transpose()
+################################# Here include aco_angle next ##############################
 
 
-LBN_output_features = ["E", "px","py","pz","pt","pair_dy"]
-
-model = tf.keras.models.Sequential([
-    #tf.keras.layers.Flatten( input_shape=(5,4)),
-    LBNLayer((len(x[0]),4,), 120, boost_mode=LBN.PAIRS, features=LBN_output_features),
-    #tf.keras.layers.BatchNormalization(), 
-    tf.keras.layers.Dense(30, activation='relu'),
-    tf.keras.layers.Dense(16),
-    tf.keras.layers.Reshape((4,4))
-])
-
-loss_fn = tf.keras.losses.MeanSquaredError() #try with this function but could do with loss="categorical_crossentropy" instead
-model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
-
-
-#train model
-history = model.fit(x, y, validation_split = 0.3, epochs = 25)
-print('Model is trained for the first time')
-
-
-hist1 = np.array(model(x)[:,0][0])
-hist2 = np.array(y[:,0][0])
-
-
-plt.figure()
-plt.hist(hist1, label = "LBN guess")
-plt.hist(hist2, label = "True")
-plt.title("Histogram of Neural Network Performance for LBN-L1")
-plt.xlabel("Boosted 4 momentum")
-plt.ylabel("Frequency")
-plt.legend()
-plt.savefig("test_LBN.png")
-
-
-
-
-raise END
-
-
-
-################################# Here define the model ##############################
-
-#Now try and include the LBN
-#x = tf.convert_to_tensor(np.array(df4[momenta_features],dtype=np.float32), dtype=np.float32)
-
-
-#try the different input 'geometry'
 #inputs=[phi_CP_unshifted, bigO, y_T]
-inputs=[*pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, *pi_2_4Mom_star,*pi_1_4Mom_star]
+inputs=[pi0_1_4Mom, pi_1_4Mom, pi0_2_4Mom, pi_2_4Mom]
 #inputs = [*pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, df4['y_1_1'], df4['y_1_2'], *pi_2_4Mom_star[1:]]
-x = np.array(inputs,dtype=np.float32).transpose()
 
-node_nb=64#48#32#64
+x = tf.convert_to_tensor(inputs, dtype=np.float32)
+x = tf.transpose(x, [2, 0, 1])  #this is the correct transposition ?
+# x = np.array(inputs,dtype=np.float32).transpose()
+
+node_nb=30#64#48#32#64
 
 #The target
-target = df4[["aco_angle_1"]]
+#target = df4[["aco_angle_1"]]
+target = [pi_1_4Mom_star, pi_2_4Mom_star, pi0_1_4Mom_star, pi0_2_4Mom_star]
 #target=[phi_CP_unshifted, bigO, y_T]
-y = np.array(target,dtype=np.float32)#.transpose() #this is the target
+y = tf.convert_to_tensor(target, dtype=np.float32)
+y = tf.transpose(y, [2, 0, 1])  #this is the correct transposition ?
+#y = np.array(target,dtype=np.float32).transpose() #this is the target
+
+#raise end
 
 print("\n the std of y", tf.math.reduce_std(y))
 print("\n the std of x", tf.math.reduce_std(x))
@@ -252,20 +208,18 @@ print("\n the std of x", tf.math.reduce_std(x))
 # start a sequential model
 model = tf.keras.models.Sequential()
 
-
 #all the output we want  in some boosted frame
-output = ["E", "px", "py", "pz"]  
+LBN_output_features = ["E", "px", "py", "pz", "lambda_1_perp", "lambda_2_perp", "phi_cp_un"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", "
 
 
 #define NN model and compile, now merging 2 3 and all the way to output
 model = tf.keras.models.Sequential([
-    tf.keras.layers.Dense(node_nb, activation='relu', input_shape=(len(x[0]),)),
-    tf.keras.layers.Dense(node_nb, activation='relu', input_shape=(len(x[0]),)),   
-    tf.keras.layers.Dense(3), #this is the glue
-    tf.keras.layers.Dense(32, activation='relu', input_shape=(len(x[0]),)),
-    tf.keras.layers.Dense(32, activation='relu', input_shape=(len(x[0]),)),
-    tf.keras.layers.Dense(1) #this is the output, maybe phi_CP
-    #tf.keras.layers.Reshape((4, 4))
+    #define the layer, thanks Kingsley
+    LBNLayer((4, 4), 4, n_restframes = 1, boost_mode = LBN.PRODUCT, features = LBN_output_features),
+    tf.keras.layers.Dense(node_nb, activation = 'relu'),
+    tf.keras.layers.Dense(node_nb, activation = 'relu'),
+    tf.keras.layers.Dense(16),
+    tf.keras.layers.Reshape((4, 4))
 ])
 
 model.summary()
@@ -278,7 +232,72 @@ model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
 
 #train model
 history = model.fit(x, y, validation_split = 0.3, epochs = 25)
-print('Model is trained for the first time')
+print('Model is trained.')
+
+
+
+def frac(i, d = -2):
+    difference = y[:, 0, i]-model(x)[:, 0, i]
+    difference = np.reshape(difference, [-1])
+    print(difference[:10])
+    l = np.where(abs(difference)<=10**(d),1,0)
+    print(l[:10])
+    
+    print (float(float(np.sum(l))/len(l)))
+    return float(float(np.sum(l))/len(l))
+
+hist1 = np.array(model(x)[:, 0, 0])
+hist2 = np.array(y[:, 0, 0])
+
+
+hist3 = np.array(model(x)[:, 0, 1])
+hist4 = np.array(y[:, 0, 1])
+
+hist5 = np.array(model(x)[:, 0, 2])
+hist6 = np.array(y[:, 0, 2])
+
+hist7 = np.array(model(x)[:, 0, 3])
+hist8 = np.array(y[:, 0, 3])
+
+dd = 0
+dd2 = -2
+
+fig = plt.figure(figsize=(10,10), frameon = False)
+plt.title("Neural Network Performance for lambda perp \n basics + normalised perp + tier2 features (25 epochs)")
+plt.axis('off')
+
+ax = fig.add_subplot(2,2,1)#, constrained_layout=True)
+plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN E component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd, frac(0, dd), dd2, frac(0, dd2)))
+plt.hist(hist2, bins = 100, alpha = 0.5, label = "True E component")
+plt.ylabel("Frequency")
+plt.grid()
+plt.legend()
+
+ax = fig.add_subplot(2,2,2)#, constrained_layout=True)
+plt.hist(hist3, bins = 100, alpha = 0.5, label = "NN px component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd,frac(1, dd), dd2,frac(1, dd2)))
+plt.hist(hist4, bins = 100, alpha = 0.5, label = "True px component")
+plt.grid()
+plt.legend()
+
+ax = fig.add_subplot(2,2,3)#, constrained_layout=True)
+plt.hist(hist5, bins = 100, alpha = 0.5, label = "NN py component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd,frac(2, dd), dd2,frac(2, dd2)))
+plt.hist(hist6, bins = 100, alpha = 0.5, label = "True py component")
+plt.grid()
+plt.ylabel("Frequency")
+plt.xlabel("4Vector component")
+plt.legend()
+
+ax = fig.add_subplot(2,2,4)#, constrained_layout=True)
+plt.hist(hist7, bins = 100, alpha = 0.5, label = "NN pz component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd,frac(3, dd), dd2,frac(3, dd2)))
+plt.hist(hist8, bins = 100, alpha = 0.5, label = "True pz component")
+plt.grid()
+plt.legend()
+plt.xlabel("4Vector component")
+
+
+plt.savefig("Lambda_basics_perpN_tier2.png")
+
+
 
 
 
@@ -346,17 +365,7 @@ print('Model is trained for the first time')
 
 
 
-hist1 = np.array(model(x)[:,0])
-hist2 = np.array(y[:,0])
 
-plt.figure()
-plt.hist(hist1, label = "phi_CP component")
-plt.hist(hist2, label = "True phi_CP component")
-plt.title("Histogram of Neural Network Performance for L2-Output")
-plt.xlabel("Phi_CP")
-plt.ylabel("Frequency")
-plt.legend()
-plt.savefig("Good_CP.png")
 
 
 

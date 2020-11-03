@@ -465,7 +465,8 @@ class LBN(object):
 
         # determine the scalar beta and gamma values
         beta = tf.sqrt(tf.reduce_sum(tf.square(pvec), axis=1)) / tf.squeeze(E, axis=-1)
-        gamma = 1. / tf.sqrt(1. - tf.square(beta) + self.epsilon)
+        #Kingsley changed this line, added minus:
+        gamma = -1. / tf.sqrt(1. - tf.square(beta) + self.epsilon)
 
         # the e vector, (1, -betavec / beta)^T
         beta = tf.expand_dims(beta, axis=-1)
@@ -689,19 +690,22 @@ class FeatureFactory(FeatureFactoryBase):
         # matrix from which we want to extract the values of the upper triangle w/o diagonal,
         # so store these upper triangle indices for later use in tf.gather
         self.triu_indices = triu_range(self.n)
-
+        #self.tril_indices = tril_range(self.n)  #added by alie, useful for cross product method
+ 
     @FeatureFactoryBase.single_feature
     def E(self, **opts):
         """
         Energy.
         """
-        return self.lbn.boosted_particles[..., 0]
+        E=self.lbn.boosted_particles[..., 0]
+        print("\n self.lbn.boosted_particles shape \n",self.lbn.boosted_particles.shape)
+        return E
 
     @FeatureFactoryBase.single_feature
     def px(self, **opts):
         """
         Momentum component x.
-        """
+        """        
         return self.lbn.boosted_particles[..., 1]
 
     @FeatureFactoryBase.single_feature
@@ -738,7 +742,7 @@ class FeatureFactory(FeatureFactoryBase):
         Absolute momentum.
         """
         return self._p2(**opts)**0.5
-
+    
     @FeatureFactoryBase.single_feature
     def pt(self, **opts):
         """
@@ -781,6 +785,94 @@ class FeatureFactory(FeatureFactoryBase):
         Relativistic gamma factor, 1 / sqrt(1-beta**2) or E / m.
         """
         return self.E(**opts) / tf.maximum(self.m(**opts), self.epsilon)
+    
+    
+    ####################### Identification of particles ########################
+    # careful, the inputs must be pi0_1, pi1, pi02, pi2 in this order ! #####
+    
+    @FeatureFactoryBase.single_feature
+    def pi0_1_star(self, **opts):
+        """
+        Four momenta of the leading neutral pion.
+        """
+        return self.lbn.boosted_particles[:, 0, :]
+    
+    @FeatureFactoryBase.single_feature
+    def pi_1_star(self, **opts):
+        """
+        Four momenta of the leading charged pion.
+        """
+        return self.lbn.boosted_particles[:, 1, :]
+    
+    @FeatureFactoryBase.single_feature
+    def pi0_2_star(self, **opts):
+        """
+        Four momenta of the subleading neutral pion.
+        """
+        return self.lbn.boosted_particles[:, 2, :]
+    
+    @FeatureFactoryBase.single_feature
+    def pi_2_star(self, **opts):
+        """
+        Four momenta of the subleading charged pion.
+        """
+        return self.lbn.boosted_particles[:, 3, :]
+    
+############################## caluclate lambda_ perp ##################################
+
+    @FeatureFactoryBase.single_feature
+    def lambda_1_perp(self, **opts):
+        """
+        Normalised three vector perpendicular to the plane of the two leading pions.
+        """
+        #lambda_1_perp = np.cross(self.pi0_1_star()[:, 1:], self.pi_1_star()[:, 1:])
+        #lambda_1_perp/np.norm(lambda_1_perp)    
+        return tf.math.l2_normalize(tf.linalg.cross(self.pi0_1_star()[:, 1:], self.pi_1_star()[:, 1:]), axis=1)
+    
+    @FeatureFactoryBase.single_feature
+    def lambda_2_perp(self, **opts):
+        """
+        Normalised three vector perpendicular to the plane of the two subleading pions.
+        """
+#         lambda_2_perp = np.cross(self.pi0_2_star()[:, 1:], self.pi_2_star()[:, 1:])
+#         return lambda_2_perp/np.norm(lambda_2_perp)
+        return tf.math.l2_normalize(tf.linalg.cross(self.pi0_2_star()[:, 1:], self.pi_2_star()[:, 1:]), axis=1)
+    
+################################### Calculate phi_star #######################################
+
+    @FeatureFactoryBase.single_feature
+    def phi_cp_un(self, **opts):
+        """
+        Non-shifted phi_cp angle.
+        """
+        phi_cp_un = tf.math.acos(tf.reduce_sum(tf.math.multiply(self.lambda_1_perp(), self.lambda_2_perp()), axis=1))
+        big_O = tf.math.reduce_sum(tf.math.multiply(tf.linalg.cross(self.lambda_1_perp(), self.lambda_2_perp()), self.pi_2_star()[:, 1:]), axis=1)
+        
+        return tf.convert_to_tensor([phi_cp_un, big_O], dtype="float32")
+    
+    
+#     @FeatureFactoryBase.single_feature
+#     def big_O(self, **opts):
+#         """
+#         The big O variable, latter to be used for shifts.
+#         """
+#         return tf.math.reduce_sum(tf.math.multiply(tf.linalg.cross(self.lambda_1_perp(), self.lambda_2_perp()), self.pi_2_star()[:, 1:]), axis=1)
+    
+#     @FeatureFactoryBase.single_feature
+#     def y_tau(self, **opts):
+#         """
+#         The y_tau variable, latter to be used for shifts.
+#         """
+#         tf_y_1 = (self.pi_1_star()[:,0] - self.pi0_1_star()[:,0])/(self.pi_1_star()[:,0] + self.pi0_1_star()[:,0])
+#         tf_y_2 = (self.pi_2_star()[:,0] - self.pi0_2_star()[:,0])/(self.pi_2_star()[:,0] + self.pi0_2_star()[:,0])
+        
+#         return tf_y_1*tf_y_2
+    
+    
+    
+
+#######################################################################################################
+    
 
     @FeatureFactoryBase.pair_feature
     def pair_dr(self, **opts):
@@ -824,23 +916,60 @@ class FeatureFactory(FeatureFactoryBase):
         all_pair_cos = tf.matmul(self._pvec_norm(**opts), self._pvec_norm_T(**opts))
 
         # return only upper triangle without diagonal
-        return tf.gather(tf.reshape(all_pair_cos, [-1, self.n**2]), self.triu_indices, axis=1)
-    
-    
-    #ADDED BY ALIE !
-    @FeatureFactoryBase.pair_feature
-    def cross_product(self, **opts):
-        """
-        Cross product between each pair of particles
-        """
-        #will need to seriously work with dimensions
-        all_pair_cross = tf.linalg.cross(self._pvec_norm(**opts)[1:-1], 
-                                         self._pvec_norm(**opts)[1:-1])
-        #here no need to transpose one of the vector
+        yy = tf.gather(tf.reshape(all_pair_cos, [-1, self.n**2]), self.triu_indices, axis=1)
         
-        #need to be clever with what we return, basically only upper triangle without diagonal too
-        return tf.gather(tf.reshape(all_pair_cross, [-1, self.n**2]), self.triu_indices, axis=1)
+        return yy
+
     
+#     #ADDED BY ALIE ! #next: include negative part ?
+#     @FeatureFactoryBase.pair_feature
+#     def cross_product_z(self, **opts):
+#         """
+#         Z component of cross product between momenta of each pair of particles
+#         """
+#         #we need to expand in 2d to have the right matrix arrangement
+#         cross_z = tf.expand_dims(self.px(**opts), axis=-1)*tf.expand_dims(self.py(**opts), axis=-2)
+
+#         #only transpose the two last sides, we want some pairwise operations
+#         cross_z_T=tf.einsum('aij -> aji', cross_z) 
+        
+#         #and then substract and keep the right half of the triangle to have cross product
+#         yy = tf.gather(tf.reshape(cross_z-cross_z_T, [-1, self.n**2]), self.triu_indices, axis=1)
+#         return yy
+    
+#     #ADDED BY ALIE ! #next: make it actually clean and not repeat the same thing 3 times ?
+#     @FeatureFactoryBase.pair_feature
+#     def cross_product_x(self, **opts):
+#         """
+#         X component of cross product between momenta of each pair of particles
+#         """
+#         #we need to expand in 2d to have the right matrix arrangement
+#         cross_x = tf.expand_dims(self.py(**opts), axis=-1)*tf.expand_dims(self.pz(**opts), axis=-2)
+
+#         #only transpose the two last sides, we want some pairwise operations
+#         cross_x_T=tf.einsum('aij -> aji', cross_x) 
+        
+#         #and then substract and keep the right half of the triangle to have cross product
+#         yy = tf.gather(tf.reshape(cross_x-cross_x_T, [-1, self.n**2]), self.triu_indices, axis=1)
+#         return yy
+    
+    
+#      #ADDED BY ALIE !
+#     @FeatureFactoryBase.pair_feature
+#     def cross_product_y(self, **opts):
+#         """
+#         X component of cross product between momenta of each pair of particles
+#         """
+#         #we need to expand in 2d to have the right matrix arrangement
+#         cross_y = tf.expand_dims(self.pz(**opts), axis=-1)*tf.expand_dims(self.px(**opts), axis=-2)
+
+#         #only transpose the two last sides, we want some pairwise operations
+#         cross_y_T=tf.einsum('aij -> aji', cross_y) 
+        
+#         #and then substract and keep the right half of the triangle to have cross product
+#         yy = tf.gather(tf.reshape(cross_y-cross_y_T, [-1, self.n**2]), self.triu_indices, axis=1)
+#         return yy
+
 
     @FeatureFactoryBase.pair_feature
     def pair_ds(self, **opts):
@@ -860,6 +989,7 @@ class FeatureFactory(FeatureFactoryBase):
 
         ds = diffs_E**2 - diffs_p2
         return tf.sign(ds) * tf.abs(ds)**0.5
+    
 
     @FeatureFactoryBase.pair_feature
     def pair_dy(self, **opts):
@@ -868,10 +998,15 @@ class FeatureFactory(FeatureFactoryBase):
         """
         # dy = y1 - y2 = atanh(beta1) - atanh(beta2)
         beta = tf.clip_by_value(self.beta(**opts), self.epsilon, 1 - self.epsilon)
+        
         dy = tf.atanh(tf.expand_dims(beta, axis=-1)) - tf.atanh(tf.expand_dims(beta, axis=-2))
-
+        
         # return only upper triangle without diagonal
-        return tf.gather(tf.reshape(dy, [-1, self.n**2]), self.triu_indices, axis=1)
+        yy2 = tf.gather(tf.reshape(dy, [-1, self.n**2]), self.triu_indices, axis=1)
+        return yy2
+        
+    
+    
 
 
 def tf_non_zero(t, epsilon):
@@ -926,6 +1061,8 @@ class LBNLayer(tf.keras.layers.Layer):
 
         # store names of features to build
         self._features = kwargs.pop("features", None)
+        
+        print('This lbn is done')
 
         # store external features to concatenate with the lbn outputs
         self._external_features = kwargs.pop("external_features", None)
@@ -942,6 +1079,8 @@ class LBNLayer(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         # build the lbn
+        
+        print('trying ot build lbn')
         self.lbn.build(input_shape, features=self._features,
             external_features=self._external_features)
 
@@ -950,10 +1089,13 @@ class LBNLayer(tf.keras.layers.Layer):
         self.particle_weights = self.lbn.particle_weights
         self.restframe_weights = self.lbn.restframe_weights
         self.aux_weights = self.lbn.aux_weights
+        
+        print('This was done no problem')
 
         super(LBNLayer, self).build(input_shape)
 
     def call(self, inputs):
+        print('The call was done too')
         return self.lbn(inputs)
 
     def compute_output_shape(self, input_shape):
