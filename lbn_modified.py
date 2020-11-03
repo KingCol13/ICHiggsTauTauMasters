@@ -848,7 +848,9 @@ class FeatureFactory(FeatureFactoryBase):
         phi_cp_un = tf.math.acos(tf.reduce_sum(tf.math.multiply(self.lambda_1_perp(), self.lambda_2_perp()), axis=1))
         big_O = tf.math.reduce_sum(tf.math.multiply(tf.linalg.cross(self.lambda_1_perp(), self.lambda_2_perp()), self.pi_2_star()[:, 1:]), axis=1)
         
-        return tf.convert_to_tensor([phi_cp_un, big_O], dtype="float32")
+        x = tf.convert_to_tensor([phi_cp_un[:], big_O[:]], dtype="float32")
+        
+        return tf.reshape(x, (None, 2))
     
     
 #     @FeatureFactoryBase.single_feature

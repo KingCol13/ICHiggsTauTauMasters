@@ -193,9 +193,9 @@ node_nb=30#64#48#32#64
 #The target
 #target = df4[["aco_angle_1"]]
 target = [pi_1_4Mom_star, pi_2_4Mom_star, pi0_1_4Mom_star, pi0_2_4Mom_star]
-#target=[phi_CP_unshifted, bigO, y_T]
+target=[phi_CP_unshifted]#, bigO, y_T]
 y = tf.convert_to_tensor(target, dtype=np.float32)
-y = tf.transpose(y, [2, 0, 1])  #this is the correct transposition ?
+#y = tf.transpose(y, [2, 0, 1])  #this is the correct transposition ?
 #y = np.array(target,dtype=np.float32).transpose() #this is the target
 
 #raise end
@@ -218,8 +218,8 @@ model = tf.keras.models.Sequential([
     LBNLayer((4, 4), 4, n_restframes = 1, boost_mode = LBN.PRODUCT, features = LBN_output_features),
     tf.keras.layers.Dense(node_nb, activation = 'relu'),
     tf.keras.layers.Dense(node_nb, activation = 'relu'),
-    tf.keras.layers.Dense(16),
-    tf.keras.layers.Reshape((4, 4))
+    tf.keras.layers.Dense(1),
+    #tf.keras.layers.Reshape((4, 4))
 ])
 
 model.summary()
