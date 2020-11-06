@@ -192,10 +192,10 @@ node_nb=30#64#48#32#64
 
 #The target
 #target = df4[["aco_angle_1"]]
-target = [pi_1_4Mom_star, pi_2_4Mom_star, pi0_1_4Mom_star, pi0_2_4Mom_star]
-#target=[phi_CP_unshifted, bigO, y_T]
-y = tf.convert_to_tensor(target, dtype=np.float32)
-y = tf.transpose(y, [2, 0, 1])  #this is the correct transposition ?
+#target = [pi_1_4Mom_star, pi_2_4Mom_star, pi0_1_4Mom_star, pi0_2_4Mom_star]
+target = [phi_CP]#, bigO, y_T]
+y = tf.transpose(tf.convert_to_tensor(target, dtype=np.float32))
+#y = tf.transpose(y, [2, 0, 1])  #this is the correct transposition ?
 #y = np.array(target,dtype=np.float32).transpose() #this is the target
 
 #raise end
@@ -208,8 +208,14 @@ print("\n the std of x", tf.math.reduce_std(x))
 # start a sequential model
 model = tf.keras.models.Sequential()
 
+
+
+fig = plt.figure(figsize=(10,10), frameon = False)
+plt.title("Neural Network Performance for bigO \n Different input features, [PRODUCT, 30r, 30r, MeanSquareError] (25 epochs)")
+plt.axis('off')
+
 #all the output we want  in some boosted frame
-LBN_output_features = ["E", "px", "py", "pz", "lambda_1_perp", "lambda_2_perp", "phi_cp_un"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", "
+LBN_output_features = ["only_phi_CP"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", ""E", "px", "py", "pz"]
 
 
 #define NN model and compile, now merging 2 3 and all the way to output
@@ -218,15 +224,58 @@ model = tf.keras.models.Sequential([
     LBNLayer((4, 4), 4, n_restframes = 1, boost_mode = LBN.PRODUCT, features = LBN_output_features),
     tf.keras.layers.Dense(node_nb, activation = 'relu'),
     tf.keras.layers.Dense(node_nb, activation = 'relu'),
-    tf.keras.layers.Dense(16),
-    tf.keras.layers.Reshape((4, 4))
+    tf.keras.layers.Dense(1),
+    #tf.keras.layers.Reshape((4, 4))
 ])
 
-model.summary()
+#Next run it
+loss_fn = tf.keras.losses.MeanSquaredError() #common to the 4 iterations
+model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
+
+
+#train model
+history = model.fit(x, y, validation_split = 0.3, epochs = 25)
+
+
+
+d = -3
+dd = -1
+
+def frac(d = -2):
+    difference = y[:, 0]-model(x)[:, 0]
+    difference = np.reshape(difference, [-1])
+    print(difference[:10])
+    l = np.where(abs(difference)<=10**(d),1,0)
+    return float(float(np.sum(l))/len(l))
+
+hist1 = np.array(model(x)[:, 0])
+hist2 = np.array(y[:, 0])
+
+ax = fig.add_subplot(2,2,1)
+plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN $\phi_{CP}$ component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd, frac(dd), d, frac(d)))
+plt.hist(hist2, bins = 100, alpha = 0.5, label = 'True $\phi_{CP}$ component - Inputs: cos($\phi_{CP}$)')
+plt.ylabel("Frequency")
+plt.grid()
+plt.legend()
+
+plt.savefig('Test_4')
+
+#all the output we want  in some boosted frame
+LBN_output_features = ["E", "px", "py", "pz"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", "
+
+
+#define NN model and compile, now merging 2 3 and all the way to output
+model = tf.keras.models.Sequential([
+    #define the layer, thanks Kingsley
+    LBNLayer((4, 4), 4, n_restframes = 1, boost_mode = LBN.PRODUCT, features = LBN_output_features),
+    tf.keras.layers.Dense(node_nb, activation = 'relu'),
+    tf.keras.layers.Dense(node_nb, activation = 'relu'),
+    tf.keras.layers.Dense(1),
+    #tf.keras.layers.Reshape((4, 4))
+])
 
 
 #Next run it
-loss_fn = tf.keras.losses.MeanSquaredError() #try with this function but could do with loss="categorical_crossentropy" instead
 model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
 
 
@@ -234,68 +283,155 @@ model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
 history = model.fit(x, y, validation_split = 0.3, epochs = 25)
 print('Model is trained.')
 
+hist1 = np.array(model(x)[:, 0])
+hist2 = np.array(y[:, 0])
+
+ax = fig.add_subplot(2,2,2)
+plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN $\phi_{CP}^{un}$ component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd, frac(dd), d, frac(d)))
+plt.hist(hist2, bins = 100, alpha = 0.5, label = 'True $\phi_{CP}^{un}$ component - Inputs: E, px, py, pz')
+plt.grid()
+plt.legend()
+
+plt.savefig('Test_4')
 
 
-def frac(i, d = -2):
-    difference = y[:, 0, i]-model(x)[:, 0, i]
-    difference = np.reshape(difference, [-1])
-    print(difference[:10])
-    l = np.where(abs(difference)<=10**(d),1,0)
-    print(l[:10])
+#all the output we want  in some boosted frame
+LBN_output_features = ["only_phi_CP_un", "only_big_O", "only_y_tau"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", "
+
+
+#define NN model and compile, now merging 2 3 and all the way to output
+model = tf.keras.models.Sequential([
+    #define the layer, thanks Kingsley
+    LBNLayer((4, 4), 4, n_restframes = 1, boost_mode = LBN.PRODUCT, features = LBN_output_features),
+    tf.keras.layers.Dense(node_nb, activation = 'relu'),
+    tf.keras.layers.Dense(node_nb, activation = 'relu'),
+    tf.keras.layers.Dense(1),
+    #tf.keras.layers.Reshape((4, 4))
+])
+
+
+#Next run it
+model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
+
+
+#train model
+history = model.fit(x, y, validation_split = 0.3, epochs = 25)
+print('Model is trained.')
+
+hist1 = np.array(model(x)[:, 0])
+hist2 = np.array(y[:, 0])
+
+ax = fig.add_subplot(2,2,3)
+plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN $\phi_{CP}^{un}$ component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd, frac(dd), d, frac(d)))
+plt.hist(hist2, bins = 100, alpha = 0.5, label = 'True $\phi_{CP}^{un}$ component - Inputs: cos($\phi_{CP}^{un}$), big_O, $y_{\tau}$')
+plt.ylabel("Frequency")
+plt.xlabel("phi_cp_unshifted")
+plt.grid()
+plt.legend()
+
+plt.savefig('Test_4')
+
+#all the output we want  in some boosted frame
+LBN_output_features = ["lambda_1_perp", "lambda_2_perp", "only_big_O", "only_y_tau"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", "
+
+
+#define NN model and compile, now merging 2 3 and all the way to output
+model = tf.keras.models.Sequential([
+    #define the layer, thanks Kingsley
+    LBNLayer((4, 4), 4, n_restframes = 1, boost_mode = LBN.PRODUCT, features = LBN_output_features),
+    tf.keras.layers.Dense(node_nb, activation = 'relu'),
+    tf.keras.layers.Dense(node_nb, activation = 'relu'),
+    tf.keras.layers.Dense(1),
+    #tf.keras.layers.Reshape((4, 4))
+])
+
+
+#Next run it
+model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
+
+
+#train model
+history = model.fit(x, y, validation_split = 0.3, epochs = 25)
+print('Model is trained.')
+
+hist1 = np.array(model(x)[:, 0])
+hist2 = np.array(y[:, 0])
+
+ax = fig.add_subplot(2,2,4)
+plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN $\phi_{CP}^{un}$ component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd, frac(dd), d, frac(d)))
+plt.hist(hist2, bins = 100, alpha = 0.5, label = 'True $\phi_{CP}^{un}$ component - Inputs: $\lambda_{\perp}^{1,2}$, big_O, $y_{\tau}$')
+plt.xlabel("phi_cp_unshifted")
+plt.grid()
+plt.legend()
+
+plt.savefig('Test_4')
+
+
+
+
+
+################### To plot the reconstruction quality of a 4D vector ##############
+
+# def frac(i, d = -2):
+#     difference = y[:, 0, i]-model(x)[:, 0, i]
+#     difference = np.reshape(difference, [-1])
+#     print(difference[:10])
+#     l = np.where(abs(difference)<=10**(d),1,0)
+#     print(l[:10])
     
-    print (float(float(np.sum(l))/len(l)))
-    return float(float(np.sum(l))/len(l))
+#     print (float(float(np.sum(l))/len(l)))
+#     return float(float(np.sum(l))/len(l))
 
-hist1 = np.array(model(x)[:, 0, 0])
-hist2 = np.array(y[:, 0, 0])
-
-
-hist3 = np.array(model(x)[:, 0, 1])
-hist4 = np.array(y[:, 0, 1])
-
-hist5 = np.array(model(x)[:, 0, 2])
-hist6 = np.array(y[:, 0, 2])
-
-hist7 = np.array(model(x)[:, 0, 3])
-hist8 = np.array(y[:, 0, 3])
-
-dd = 0
-dd2 = -2
-
-fig = plt.figure(figsize=(10,10), frameon = False)
-plt.title("Neural Network Performance for lambda perp \n basics + normalised perp + tier2 features (25 epochs)")
-plt.axis('off')
-
-ax = fig.add_subplot(2,2,1)#, constrained_layout=True)
-plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN E component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd, frac(0, dd), dd2, frac(0, dd2)))
-plt.hist(hist2, bins = 100, alpha = 0.5, label = "True E component")
-plt.ylabel("Frequency")
-plt.grid()
-plt.legend()
-
-ax = fig.add_subplot(2,2,2)#, constrained_layout=True)
-plt.hist(hist3, bins = 100, alpha = 0.5, label = "NN px component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd,frac(1, dd), dd2,frac(1, dd2)))
-plt.hist(hist4, bins = 100, alpha = 0.5, label = "True px component")
-plt.grid()
-plt.legend()
-
-ax = fig.add_subplot(2,2,3)#, constrained_layout=True)
-plt.hist(hist5, bins = 100, alpha = 0.5, label = "NN py component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd,frac(2, dd), dd2,frac(2, dd2)))
-plt.hist(hist6, bins = 100, alpha = 0.5, label = "True py component")
-plt.grid()
-plt.ylabel("Frequency")
-plt.xlabel("4Vector component")
-plt.legend()
-
-ax = fig.add_subplot(2,2,4)#, constrained_layout=True)
-plt.hist(hist7, bins = 100, alpha = 0.5, label = "NN pz component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd,frac(3, dd), dd2,frac(3, dd2)))
-plt.hist(hist8, bins = 100, alpha = 0.5, label = "True pz component")
-plt.grid()
-plt.legend()
-plt.xlabel("4Vector component")
+# hist1 = np.array(model(x)[:, 0, 0])
+# hist2 = np.array(y[:, 0, 0])
 
 
-plt.savefig("Lambda_basics_perpN_tier2.png")
+# hist3 = np.array(model(x)[:, 0, 1])
+# hist4 = np.array(y[:, 0, 1])
+
+# hist5 = np.array(model(x)[:, 0, 2])
+# hist6 = np.array(y[:, 0, 2])
+
+# hist7 = np.array(model(x)[:, 0, 3])
+# hist8 = np.array(y[:, 0, 3])
+
+# dd = 0
+# dd2 = -2
+
+# fig = plt.figure(figsize=(10,10), frameon = False)
+# plt.title("Neural Network Performance for lambda perp \n basics + normalised perp + tier2 features (25 epochs)")
+# plt.axis('off')
+
+# ax = fig.add_subplot(2,2,1)#, constrained_layout=True)
+# plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN E component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd, frac(0, dd), dd2, frac(0, dd2)))
+# plt.hist(hist2, bins = 100, alpha = 0.5, label = "True E component")
+# plt.ylabel("Frequency")
+# plt.grid()
+# plt.legend()
+
+# ax = fig.add_subplot(2,2,2)#, constrained_layout=True)
+# plt.hist(hist3, bins = 100, alpha = 0.5, label = "NN px component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd,frac(1, dd), dd2,frac(1, dd2)))
+# plt.hist(hist4, bins = 100, alpha = 0.5, label = "True px component")
+# plt.grid()
+# plt.legend()
+
+# ax = fig.add_subplot(2,2,3)#, constrained_layout=True)
+# plt.hist(hist5, bins = 100, alpha = 0.5, label = "NN py component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd,frac(2, dd), dd2,frac(2, dd2)))
+# plt.hist(hist6, bins = 100, alpha = 0.5, label = "True py component")
+# plt.grid()
+# plt.ylabel("Frequency")
+# plt.xlabel("4Vector component")
+# plt.legend()
+
+# ax = fig.add_subplot(2,2,4)#, constrained_layout=True)
+# plt.hist(hist7, bins = 100, alpha = 0.5, label = "NN pz component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd,frac(3, dd), dd2,frac(3, dd2)))
+# plt.hist(hist8, bins = 100, alpha = 0.5, label = "True pz component")
+# plt.grid()
+# plt.legend()
+# plt.xlabel("4Vector component")
+
+
+# plt.savefig("Lambda_basics_perpN_tier2.png")
 
 
 
