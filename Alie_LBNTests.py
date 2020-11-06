@@ -193,7 +193,7 @@ node_nb=30#64#48#32#64
 #The target
 #target = df4[["aco_angle_1"]]
 #target = [pi_1_4Mom_star, pi_2_4Mom_star, pi0_1_4Mom_star, pi0_2_4Mom_star]
-target = [phi_CP]#, bigO, y_T]
+target = [np.cos(phi_CP_unshifted)]#, bigO, y_T]
 y = tf.transpose(tf.convert_to_tensor(target, dtype=np.float32))
 #y = tf.transpose(y, [2, 0, 1])  #this is the correct transposition ?
 #y = np.array(target,dtype=np.float32).transpose() #this is the target
@@ -211,11 +211,11 @@ model = tf.keras.models.Sequential()
 
 
 fig = plt.figure(figsize=(10,10), frameon = False)
-plt.title("Neural Network Performance for bigO \n Different input features, [PRODUCT, 30r, 30r, MeanSquareError] (25 epochs)")
-plt.axis('off')
+plt.title("Neural Network Performance for cos(phi_CP) \n Different input features, [PRODUCT, 30r, 30r, MeanSquareError] (25 epochs)")
+#plt.axis('off')
 
 #all the output we want  in some boosted frame
-LBN_output_features = ["only_phi_CP"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", ""E", "px", "py", "pz"]
+LBN_output_features = ["only_phi_CP_un"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", ""E", "px", "py", "pz"]
 
 
 #define NN model and compile, now merging 2 3 and all the way to output
@@ -251,14 +251,42 @@ def frac(d = -2):
 hist1 = np.array(model(x)[:, 0])
 hist2 = np.array(y[:, 0])
 
-ax = fig.add_subplot(2,2,1)
-plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN $\phi_{CP}$ component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd, frac(dd), d, frac(d)))
-plt.hist(hist2, bins = 100, alpha = 0.5, label = 'True $\phi_{CP}$ component - Inputs: cos($\phi_{CP}$)')
+#ax = fig.add_subplot(2,2,1)
+plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN cos($\phi_{CP}$) component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd, frac(dd), d, frac(d)))
+plt.hist(hist2, bins = 100, alpha = 0.5, label = 'True cos($\phi_{CP}$) component - Features: cos($\phi_{CP}$)')
 plt.ylabel("Frequency")
+plt.xlabel("cos (phi_cp)")
 plt.grid()
 plt.legend()
 
-plt.savefig('Test_4')
+plt.savefig('Test_7')
+
+raise End
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+########################## more subplots ###############################
 
 #all the output we want  in some boosted frame
 LBN_output_features = ["E", "px", "py", "pz"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", "
