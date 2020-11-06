@@ -897,18 +897,20 @@ class FeatureFactory(FeatureFactoryBase):
         """
         #here we convert to angle
         
-        print (self.only_big_O()[...,0][:10], 'this is big_O')
+        print (self.only_big_O()[...,0], 'this is big_O')
         
-        phi_cp = tf.where(self.only_big_O()[...,0]<0, tf.math.cos(self.only_phi_CP_un()), 2*np.pi-tf.math.cos(self.only_phi_CP_un()))
+        
+        
+        phi_cp = tf.where(self.only_big_O()[...,0]<0, tf.math.acos(self.only_phi_CP_un()[...,0]), 2*np.pi-tf.math.acos(self.only_phi_CP_un()[...,0]))
         
         print(phi_cp, 'this is phi_cp')
         
         #and here back to cos, because the NN doesn't deal with cos function that well...
-        phi_cp = tf.math.cos(tf.where(self.only_y_tau()[...,0]<0, phi_cp, tf.where(phi_cp<np.pi, phi_cp+np.pi, phi_cp-np.pi))) 
+        phi_cp = tf.where(self.only_y_tau()[...,0]<0, tf.math.cos(phi_cp), tf.where(phi_cp<np.pi, tf.math.cos(phi_cp+np.pi), tf.math.cos(phi_cp-np.pi)))
         
         print(phi_cp.shape, 'this is the shape again')
         x = tf.convert_to_tensor([phi_cp, phi_cp], dtype = "float32")
-        #x = tf.transpose(x)
+        x = tf.transpose(x)
         return x
     
     
