@@ -193,12 +193,17 @@ node_nb=30#64#48#32#64
 #The target
 #target = df4[["aco_angle_1"]]
 #target = [pi_1_4Mom_star, pi_2_4Mom_star, pi0_1_4Mom_star, pi0_2_4Mom_star]
-target = [np.cos(phi_CP_unshifted)]#, bigO, y_T]
+target = [np.cos(phi_CP)]#[]#, bigO, y_T]
 y = tf.transpose(tf.convert_to_tensor(target, dtype=np.float32))
+#tf.transpose(tf.convert_to_tensor(target, dtype=np.float32))
 #y = tf.transpose(y, [2, 0, 1])  #this is the correct transposition ?
 #y = np.array(target,dtype=np.float32).transpose() #this is the target
 
-#raise end
+
+# plt.plot(np.cos(phi_CP_unshifted[:100]), 'rx')
+# plt.plot(phi_CP_unshifted[:100], 'bx')
+# plt.savefig('delete.png')
+# raise end
 
 print("\n the std of y", tf.math.reduce_std(y))
 print("\n the std of x", tf.math.reduce_std(x))
@@ -211,11 +216,11 @@ model = tf.keras.models.Sequential()
 
 
 fig = plt.figure(figsize=(10,10), frameon = False)
-plt.title("Neural Network Performance for cos(phi_CP) \n Different input features, [PRODUCT, 30r, 30r, MeanSquareError] (25 epochs)")
+plt.title("Neural Network Performance for phi_CP \n Single input feature, [PRODUCT, 30r, 30r, MeanSquareError] (25 epochs)", fontsize = 'xx-large')
 #plt.axis('off')
 
 #all the output we want  in some boosted frame
-LBN_output_features = ["only_phi_CP_un"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", ""E", "px", "py", "pz"]
+LBN_output_features = ["only_phi_CP"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", ""E", "px", "py", "pz"]
 
 
 #define NN model and compile, now merging 2 3 and all the way to output
@@ -252,14 +257,14 @@ hist1 = np.array(model(x)[:, 0])
 hist2 = np.array(y[:, 0])
 
 #ax = fig.add_subplot(2,2,1)
-plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN cos($\phi_{CP}$) component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd, frac(dd), d, frac(d)))
-plt.hist(hist2, bins = 100, alpha = 0.5, label = 'True cos($\phi_{CP}$) component - Features: cos($\phi_{CP}$)')
-plt.ylabel("Frequency")
-plt.xlabel("cos (phi_cp)")
+plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN $\phi_{CP}$ component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd, frac(dd), d, frac(d)))
+plt.hist(hist2, bins = 100, alpha = 0.5, label = 'True $\phi_{CP}$ - Features: %s'%LBN_output_features[0])
+plt.ylabel("Frequency", fontsize = 'x-large')
+plt.xlabel("cos(phi_CP) (epsilon = 10e-5)", fontsize = 'x-large')
 plt.grid()
-plt.legend()
+plt.legend()#prop = {'size', 10})
 
-plt.savefig('Test_7')
+plt.savefig('Test_21')
 
 raise End
 

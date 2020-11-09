@@ -874,6 +874,9 @@ class FeatureFactory(FeatureFactoryBase):
         unshifted phi_cp required for shifts
         """
         phi_cp_un = tf.reduce_sum(tf.math.multiply(self.lambda_1_perp(), self.lambda_2_perp()), axis=1)
+        
+        phi_cp_un = tf.clip_by_value(phi_cp_un, -1 + self.epsilon, 1 - self.epsilon)
+        phi_cp_un = tf.math.acos(phi_cp_un)
         x = tf.convert_to_tensor([phi_cp_un, phi_cp_un], dtype = "float32")
         x = tf.transpose(x)
         return x
@@ -883,9 +886,11 @@ class FeatureFactory(FeatureFactoryBase):
         """
         unshifted phi_cp required for shifts
         """
-        tf_y_1 = (self.pi_1_star()[:,0] - self.pi0_1_star()[:,0])/(self.pi_1_star()[:,0] + self.pi0_1_star()[:,0])
-        tf_y_2 = (self.pi_2_star()[:,0] - self.pi0_2_star()[:,0])/(self.pi_2_star()[:,0] + self.pi0_2_star()[:,0])
-        x = tf.convert_to_tensor([tf.multiply(tf_y_1, tf_y_2), tf.multiply(tf_y_1, tf_y_2)], dtype = "float32")
+        tf_y_1 = (self.pi_1_star()[...,0] - self.pi0_1_star()[...,0])/(self.pi_1_star()[...,0] + self.pi0_1_star()[...,0])
+        tf_y_2 = (self.pi_2_star()[...,0] - self.pi0_2_star()[...,0])/(self.pi_2_star()[...,0] + self.pi0_2_star()[...,0])
+        
+        
+        x = tf.convert_to_tensor([tf.math.multiply(tf_y_1,tf_y_2), tf.math.multiply(tf_y_1,tf_y_2)], dtype = "float32")
         x = tf.transpose(x)
         return x
     
@@ -895,44 +900,17 @@ class FeatureFactory(FeatureFactoryBase):
         """
         Shifted phi_CP
         """
-        #here we convert to angle
-        
-        print (self.only_big_O()[...,0], 'this is big_O')
-        
-        
-        
-        phi_cp = tf.where(self.only_big_O()[...,0]<0, tf.math.acos(self.only_phi_CP_un()[...,0]), 2*np.pi-tf.math.acos(self.only_phi_CP_un()[...,0]))
-        
-        print(phi_cp, 'this is phi_cp')
+        phi_cp = tf.where(self.only_big_O()[...,0]<0, self.only_phi_CP_un()[...,0], 2*np.pi-self.only_phi_CP_un()[...,0])
         
         #and here back to cos, because the NN doesn't deal with cos function that well...
-        phi_cp = tf.where(self.only_y_tau()[...,0]<0, tf.math.cos(phi_cp), tf.where(phi_cp<np.pi, tf.math.cos(phi_cp+np.pi), tf.math.cos(phi_cp-np.pi)))
+        phi_cp = tf.where(self.only_y_tau()[...,0]<0, phi_cp, 
+                          tf.where(phi_cp<np.pi, phi_cp+np.pi, phi_cp-np.pi))
         
-        print(phi_cp.shape, 'this is the shape again')
-        x = tf.convert_to_tensor([phi_cp, phi_cp], dtype = "float32")
+        #print(phi_cp.shape, 'this is the shape again')
+        x = tf.convert_to_tensor([tf.math.cos(phi_cp), tf.math.cos(phi_cp)], dtype = "float32")
         x = tf.transpose(x)
         return x
-    
-    
-    
-#     @FeatureFactoryBase.single_feature
-#     def big_O(self, **opts):
-#         """
-#         The big O variable, latter to be used for shifts.
-#         """
-#         return tf.math.reduce_sum(tf.math.multiply(tf.linalg.cross(self.lambda_1_perp(), self.lambda_2_perp()), self.pi_2_star()[:, 1:]), axis=1)
-    
-#     @FeatureFactoryBase.single_feature
-#     def y_tau(self, **opts):
-#         """
-#         The y_tau variable, latter to be used for shifts.
-#         """
-#         tf_y_1 = (self.pi_1_star()[:,0] - self.pi0_1_star()[:,0])/(self.pi_1_star()[:,0] + self.pi0_1_star()[:,0])
-#         tf_y_2 = (self.pi_2_star()[:,0] - self.pi0_2_star()[:,0])/(self.pi_2_star()[:,0] + self.pi0_2_star()[:,0])
-        
-#         return tf_y_1*tf_y_2
-    
-    
+   
     
 
 #######################################################################################################
@@ -1153,8 +1131,6 @@ class LBNLayer(tf.keras.layers.Layer):
         self.particle_weights = self.lbn.particle_weights
         self.restframe_weights = self.lbn.restframe_weights
         self.aux_weights = self.lbn.aux_weights
-        
-        print('This was done no problem')
 
         super(LBNLayer, self).build(input_shape)
 
