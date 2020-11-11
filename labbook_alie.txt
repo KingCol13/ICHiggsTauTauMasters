@@ -1,0 +1,433 @@
+LBN works better with a hidden layer afterwards
+
+We will have each layer doing a specific portion of the steps to get to phi_CP
+
+#layer.get_weights() #will give the weight of a layer
+
+Using LBN to regress y_tau:
+    Using boost_mode=LBN.PAIRS
+    LBN output: E, px, py, pz
+    Output is 1 node
+    Using 25 epochs on full dataset
+    Using MSE for loss
+    Performance with 1 dense hidden layer with 32 nodes using relu: #Kingsley
+        mse = 2.8e-04, val_mae = 0.0124, std(y_T) = 0.32
+        Good performance comparatively
+    Performance with 1 dense hidden layer with 32 nodes using relu: #Alie
+        mse = 3.3895e-04, val_mae = 0.0148
+        Good performance comparatively
+        
+        
+        
+What we will be looking at: #proposed geometry 1
+
+Layer       |      Output
+------------------------------------------------------------
+Input       |    4 momenta of 4 pions
+------------------------------------------------------------
+LBN Layer   |  Boosted 4 momenta of 4 pions
+------------------------------------------------------------
+Layer 2     | 2lamda_perp, y_1 and y_2, pi_3Mom_star          #here we are doing in two steps but that's maybe not ideal, as we                                              
+------------------------------------------------------------  #know y_T is quite well and easily reco from only the LBN layer
+Layer 3     |  Phi_CP(unshifted), bigO, y_T
+------------------------------------------------------------  
+Output      | Phi_CP (shifted)
+
+
+I will work on the step from layer 3 to output for now
+
+#NOTE: Issue, looks like I am only traning on 3100 data points, trying to fix this now. Number of batches the data is split into
+
+
+#STD of y
+
+Using NN to regress y_T:
+    Inputs phi_CP(unshifted), y_T,bigO
+    Output is 1 node
+    Using 25 epochs on full dataset
+    Using MAE for loss
+    Performance with 1 dense hidden layer with 8 nodes using relu: (1,a) #Phi_shifted_1Nodes_Layer2_S3-0_a.npy
+        mse = 3.4094e-05, val_mae =  3.1544e-04
+    Performance with 1 dense hidden layer with 32 nodes using relu: (2,b) #Phi_shifted_1Nodes_Layer2_S3-0_b.npy
+        mse = 5.9164e-05, val_mae = 6.9235e-04
+    Performance with 2 dense hidden layer with 8 nodes each using relu: 
+        mse = , val_mae =  
+    Performance with 2 dense hidden layer with 32 nodes each using relu: 
+        mse = , val_mae = 
+
+        
+Using NN to regress phi_CP: #layer 3 to output
+    Inputs phi_CP(unshifted), y_T,bigO
+    Output is 1 node
+    Using 25 epochs on full dataset
+    Using MAE for loss
+    Performance with 1 dense hidden layer with 8 nodes using relu: (1,a) #Phi_shifted_1Nodes_Layer2_S3-0_d.npy
+        mse = 0.9389, val_mae =  0.8157
+    Performance with 1 dense hidden layer with 32 nodes using relu: (2,b) #Phi_shifted_1Nodes_Layer2_S3-0_c.npy
+        mse = 0.3035, val_mae = 0.3720
+    Performance with 2 dense hidden layer with 32 nodes using relu: #much better
+        mse = 0.0682, val_mae = 0.0689
+        
+        
+Using NN to regress phi_CP: #layer 2 to output
+    Inputs *pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, *pi_2_4Mom_star,*pi_1_4Mom_star
+    Output is 1 node
+    Using 25 epochs on full dataset
+    Using MAE for loss
+    Performance with 1 dense hidden layer with 8 nodes using relu: (1,a) 
+        mse = 3.2965, val_mae = 1.5702 
+    Performance with 1 dense hidden layer with 32 nodes using relu: (2,b) 
+        mse = 3.1388, val_mae = 1.5106
+        
+        
+Using NN to regress phi_CP:  #layer 2 to output
+    Inputs *pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, y_1, y_2, *pi_2_3Mom_star #much better than previously
+    Output is 1 node
+    Using 25 epochs on full dataset
+    Using MAE for loss
+    Performance with 1 dense hidden layer with 8 nodes using relu: (1,a) #Phi_shifted_1Nodes_Layer2_S3-0_d.npy
+        mse =  3.2497, val_mae = 1.5449 
+    Performance with 1 dense hidden layer with 32 nodes using relu: (2,b) #Phi_shifted_1Nodes_Layer2_S3-0_c.npy
+        mse = 3.0592, val_mae = 1.4556
+
+Using NN to regress [phi_CP_unshifted, bigO, y_T]:    #layer 2 to 3, 
+#std of here (y) 10.27587 #do we want everypoint in the vector
+    Inputs *pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, y_1, y_2, *pi_2_3Mom_star #much better than previously
+    Output is 3 node
+    Using 25 epochs on full dataset
+    Using MAE for loss
+    Performance with 1 dense hidden layer with 8 nodes using relu: 
+        mse =  66.9209, val_mae = 3.8623
+    Performance with 1 dense hidden layer with 32 nodes using relu: #this looks somewhat good
+        mse = 14.1092, val_mae = 1.8836
+    Performance with 1 dense hidden layer with 64 nodes using relu: #looks a bit too heavy computing wise ?
+        mse = 6.9051, val_mae = 1.1974
+    Performance with 2 dense hidden layers with 32 nodes using relu:  
+        mse = 2.9666, val_mae = 0.9865
+    Performance with 2 dense hidden layers with 8 nodes using relu:  
+        mse = 41.2099, val_mae = 2.9022
+    Performance with 2 dense hidden layers with 48 nodes using relu:  #8s per epoch
+        mse = 1.8864, val_mae = 0.6769
+    Performance with 2 dense hidden layers with 64 nodes using relu:  #17s per epoch 
+        mse = 1.6415, val_mae = 0.5709   #this might be the best ?
+    Performance with 3 dense hidden layers with 32 nodes using relu:  #18s per epoch 
+        mse = 2.6365, val_mae = 0.8500
+        
+#Now try and combine stuff together
+we have the best case scenario for both from 2 to 3 and from 3 to output, now merge everything together. First do it badly
+i.e. just include a lot of layers
+
+
+Using NN to regress Phi_CP_shifted:    #layer 2 to output, botched geometry 
+    Inputs: *pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, df4['y_1_1'], df4['y_1_2'], *pi_2_4Mom_star[1:]
+    Output is 1 node
+    Using 25 epochs on full dataset
+    Using MAE for loss
+    
+    Layer arrangement 1:
+                - dense, 32 nodes, 'relu'
+                - dense, 32 nodes, 'relu'
+                - dense, 3 nodes, (no activation), glue
+                - dense, 32 nodes, 'relu'
+                - dense, 1 node, (no activation), output
+    Performance with above layer 1 arrangement:  #7s/epoch
+        mse =  1.0887, val_mae = 0.6736
+        
+    Layer arrangement 2:
+                - dense, 32 nodes, 'relu'
+                - dense, 32 nodes, 'relu'
+                - dense, 3 nodes, (no activation), glue
+                - dense, 32 nodes, 'relu'
+                - dense, 32 nodes, 'relu'
+                - dense, 1 node, (no activation), output
+    Performance with above layer 2 arrangement:  #7s/epoch
+        mse =  1.2184, val_mae = 0.6649
+        
+
+        
+note: freeze the layer 3 to output weights cause we know they are great in simple traning and then maybe we can also fic the layer 2 to layer 3 weights as well ?
+
+note: could it be useful to have parallel layers ? fonctional API ! reuse cross product layer, will make it easier
+
+
+
+Next: look at how to efficiently combine the two models (maybe save up the weights ?)
+and also look at functionnal API and how to have parallel layers (ideally have a cross product layer in parrallel, that would be good). Functionnal API seem perfect for waht we want to do
+
+In order to fic the weights of some layers of the model we can just train it and then fix the weights, check https://www.tensorflow.org/guide/keras/sequential_model
+
+Big question, can we train and then add layers ? Will try that today so yeah it works, all good even !!
+then freeze the top layers 
+
+Using NN to regress Phi_CP_shifted:    #layer 2 to output, botched geometry 
+    Inputs: *pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, df4['y_1_1'], df4['y_1_2'], *pi_2_4Mom_star[1:]
+    Output is 1 node
+    Using 25 epochs on full dataset
+    Using MAE for loss
+    Layer arrangement 3:
+                - dense, 32 nodes, 'relu'
+                - dense, 32 nodes, 'relu'
+                - dense, 3 nodes, (no activation), glue
+		TRAINING + FREEZING (step 2 to step 3)  #ended at 4 (which is bad !)
+                - dense, 32 nodes, 'relu'
+                - dense, 32 nodes, 'relu'
+                - dense, 1 node, (no activation), output
+    Performance with above layer 3 arrangement:  #7s/epoch
+        mse =  2.4661, val_mae = 1.3601
+
+    Layer arrangement 4:
+                - dense, 32 nodes, 'relu'
+                - dense, 32 nodes, 'relu'
+                - dense, 3 nodes, (no activation), glue
+		TRAINING + NO FREEZING (step 2 to step 3) #ended at 4 (which is bad !)
+                - dense, 32 nodes, 'relu'
+                - dense, 32 nodes, 'relu'
+                - dense, 1 node, (no activation), output
+    Performance with above layer 4 arrangement:  #7s/epoch
+        mse =  1.2760, val_mae =  0.7398
+
+	Layer arrangement 5:
+                - dense, 64 nodes, 'relu'
+                - dense, 64 nodes, 'relu'
+                - dense, 3 nodes, (no activation), glue
+		TRAINING + FREEZING (step 2 to step 3)  #ended at mse= 2.5422
+                - dense, 32 nodes, 'relu'
+                - dense, 32 nodes, 'relu'
+                - dense, 1 node, (no activation), output
+    Performance with above layer 3 arrangement:  #7s/epoch
+        mse = 2.2024, val_mae = 1.2758
+
+    Layer arrangement 4:
+                - dense, 64 nodes, 'relu'
+                - dense, 64 nodes, 'relu'
+                - dense, 3 nodes, (no activation), glue
+		TRAINING + NO FREEZING (step 2 to step 3) #ended at mse= 2.1960
+                - dense, 32 nodes, 'relu'
+                - dense, 32 nodes, 'relu'
+                - dense, 1 node, (no activation), output
+    Performance with above layer 4 arrangement:  #7s/epoch
+        mse =  1.1525, val_mae = 0.6885 #not much better 
+
+
+#I think issue with first training !
+
+carefull, we also need to include an output layer (carefull about shape (this is essentially the same as gluing stuff together)
+#question, would definiing the input size of the tensors help the neural network (by telling it what it should be looking for?)
+
+26/10/20
+
+# Look at https://www.tensorflow.org/guide/keras/functional#all_models_are_callable_just_like_layers to glue models together today. Does it make anything better ? What is Conv2D ? also look deeper into the LBN layer (code the cross product)
+
+I feel like looking into the LBN today, will see about gluing stuff together later. 
+
+Reading the lbn documentation: looks like the lbn only does boosting in frames of the input particles, maybe the issue is that we did not give the sum of the pi 4 vectors as one of the inputs, trying now in Alie_LBNtest.py, hopefully that will be good.
+loss: 235.5696 - mae: 9.1484 - val_loss: 232.2862 - val_mae: 9.1078  #with only 20 combinaisons
+# tryig with 120
+loss: 203.0779 - mae: 9.0949 - val_loss: 198.1972 - val_mae: 8.9473 #very long !
+
+Then modify the LBN to inclue a cross product 'thing'. Line 830: the cross product feature. (now check if it better than a conventional one.) It does work !! On dummy vectors we get a loss and val_mae of 00e0, much better than the normal single dense layer which had a loss of 0.02 and mae of the same order.
+
+Issue, we cannot have other output_features with cross-product (issue in the code, need to mofiy this first before moving to actual data). working on my input shapes (I guess this is the issue, with concat and all) Trieed taking the transpose inside my cross-product function with tf.transpose. (Idea: E and cross_product cannot be called on arrays of the same shape cause of the way I coded cross-product)
+
+Still strong issues... but looks like it does work with .T and then transpose
+
+The issue is with correspindign shapes. I actually need to compare with p (i.e. 3 vectors and not scalars)
+
+28/10/20
+
+Aim for today: fix the cross product issue and have the neural net work from the boosted momenta all the way down to phi_cp.
+Take the time to think !
+
+Now add the cross product feature by comparing  with the px, py, pz features
+
+Trying with true data (and have the cross product features in as well) 
+
+Note: pair_cos would be a useful reference (it should have the same shape but just not the same nb of components in the array)
+
+There is definitely an issue with my output type 
+
+Included x.shape instead of (len(x[0],4,)) the issue was in the flatten bit. 
+
+tensorflow.python.framework.errors_impl.InvalidArgumentError:  Input to reshape is a tensor with 960 values, but the requested shape requires a multiple of 100. 
+
+Is the error when we include the cross product (I guess this makes sense) and then if we do not reshape we have the error that we do not have the same inputs to perform the mae. 
+
+COuld it be that my cross product does not have the right number of axis ? Tried to change to axis=3 since it is a vector... we'll see how that turns out. 
+
+The issue is in the reshape !! but I do not know what shape it is supposed to have ! Try with [-1, self.n**2, 3]
+
+What about that: [-1, 3*self.n**2] instead ?
+
+try thi: yy = tf.gather(tf.reshape(all_pair_cross, [-1, self.n**2, 3]), self.triu_indices, axis=1) instead (rely on pair_ds a bit more)
+
+Next maybe add a dummy energy ?
+
+we are getting there, we have yy now and it is (none, 45, 3) in shape, but now we need to make it of dimension 2
+
+try to use tf.expand_dims(
+    input, axis, name=None
+)
+? actually no, we need to use concat, let's see which one is the best (might end up doing a disgusting for loop)
+
+should we just save the different components separately ? And then it just forms itself ? I think maybe that's the way to go ?
+
+Try with all the componennts separately and only 1 output (looks like the reshape is not happy)
+
+I am understanding a bit better how the lpbn works with different subclasses etc..
+
+Check if the lbn sees the features, well yes it does ! Now checking if the lbn layer sees them as well. 
+
+it does see it too. 
+
+Now need to understand why the layer isn't properly built, has to do with the call functions I guess. 
+
+could it be an issue with this:  Tensor("sequential_1/LBN/LBN/features/transpose_10:0", shape=(None, 45), dtype=float32)
+W1028 12:23:05.614532 139652911208256 functional.py:587] Model was constructed with shape (None, 145487, 4, 4) for input Tensor("LBN_input:0", shape=(None, 145487, 4, 4), dtype=float32), but it was called on an input with incompatible shape (None, 4, 4).
+
+The above is corrected, now we need to check if the lbn does see the right number of features. It sees none !
+
+We had a total of 220 with everything, remove my 3 cross product values: we only have 85.0 then. 
+
+tensorflow.python.framework.errors_impl.InvalidArgumentError:  Input to reshape is a tensor with 960 values, but the requested shape requires a multiple of 300
+
+This is the big issue. 
+
+Yeah in eager, quick execute: the number of output and apparently it does not work here at all because of a shape mismatch
+
+ we are most likely missing _output_tensor_ids for our new outputs... should we just train a neural net to do simple cross products (as in maybe remove 3 things and add our 3 things instead ?) trying that: remove the 3 things we 'don't need' pair_ds, pair_dy etc... check the number of outputs and all that, maybe it'll work but then where would be the problem ?
+ 
+ still 175 ! It is because the other ones are actually not called previously... it is being painfull
+ 
+ Ok: tried to modify pair_dy with cross_z to see if the issue is the name or the shape. It is the shape !
+ 
+ Now just in case: verify it is not name too, no it isn't, only shape ! Need to decipher what shape is required !
+ 
+ Something weird: nan in the training, which one is the problem ? The pair_ds2 was the issue. is it because we had it twice ? no it is not that therefore it is a true issue, stuff with nez name, even identical does not work Wait, maybe we just have something missing, yes we had ! ok it is better now. 
+ 
+ Wait: does changing something in the lbn_modif.py affects the optimisation currently running ? is it my ctrl s ?
+ 
+ No it does fuck up after a bit !!
+ 
+ There seems to be an issue with pair_ds
+ 
+
+Let's see if pair dy works with modifed dz well obv no it doesn't 
+
+now check what is different from the other ones ! Maybe it will work ? at least we see the difference
+
+try to expand the dimension ?beta is 1 each so we definitely need to onlt get one each and then to expand, to ame the 2d matrix and after thta choose from this 2d matrix
+
+try to transpose, basicaly we need only one info per particle new (so (None, 10)) 
+
+Now that we have the right shape for what is our beta we need to go to the next step, is this right ?
+
+We have smth weird when we are expanding dims: (None, 10, 3, 1), yeah that's because i messed up with which one to call
+
+In the cross product thing: actually expand before there !
+
+Yeah try to expand in the cross product (or could go with the x, y and z stuff dirrectly ?)
+
+yeah will go component by component I think but how to do that ??
+
+Yeah go component by component for this we need to be clever components-wise, use tril_range and substract to triu componennts
+
+yess cross product works now !! Can easily have the negative components by taking the tril instead of tri_low
+
+so the cross product is implemented but it doesn't seem to be working very well in the actual traning (is it because of the boosting ?)
+
+2/10
+
+
+The corss product is working but now we've actually got to code the whole aco angle, note: we know which particle is which !
+
+for now just ordering in the code but it'll be usefull for later to have a more rigourous way of doing it ? (Ask Kingsley)
+
+LBNModifs has all the cross product but we'll now work with LBNTesting to include the aco_angle guesses.
+
+Relying on Kingsley's functionnal_calculations (same but made in tensorflow)
+
+
+
+
+
+
+Below: some more info but not as relevant
+
+could we matrix product the weigths of glue layers and the next hidden layers ? that sound good ?
+rectified linear == relu
+maybe linear activation is no activation at all, to do the glue. 
+        
+
+        
+Using NN to regress y_T:
+    Inputs *pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, *pi_2_4Mom_star,*pi_1_4Mom_star
+    Output is 1 node
+    Using 25 epochs on full dataset
+    Using MAE for loss
+    Performance with 1 dense hidden layer with 8 nodes using relu: (1,a)  #Phi_shifted_1Nodes_Layer2_S2-0_a.npy
+        mse = 0.0391 , val_mae = 0.1377  
+    Performance with 1 dense hidden layer with 32 nodes using relu: (2,b) #Phi_shifted_1Nodes_Layer2_S2-0_b.npy
+        mse = 0.022, val_mae =  0.1015
+    Performance with 2 dense hidden layer with 8 nodes each using relu: 
+        mse = , val_mae =  
+    Performance with 2 dense hidden layer with 32 nodes each using relu: 
+        mse = , val_mae = 
+        
+    
+Using NN to regress phi_CP(shifted):
+    Inputs *pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, y_1, y_2, *pi_2_4Mom_star
+    Output is 1 node
+    Using 25 epochs on full dataset
+    Using MAE for loss
+    Performance with 1 dense hidden layer with 8 nodes using relu: (1,a)  #Phi_shifted_1Nodes_Layer2_S2-0_a.npy
+        mse = 0.0391 , val_mae = 0.1377  
+    Performance with 1 dense hidden layer with 32 nodes using relu: (2,b) #Phi_shifted_1Nodes_Layer2_S2-0_b.npy
+        mse = 0.022, val_mae =  0.1015
+    Performance with 2 dense hidden layer with 8 nodes each using relu: 
+        mse = , val_mae =  
+    Performance with 2 dense hidden layer with 32 nodes each using relu: 
+        mse = , val_mae = 
+
+
+#Getting the weights:
+weight of the 1 dense hidden layer with 8 nodes using relu: (1)
+[array([[ 3.23416293e-01,  1.23141207e-01, -4.17121142e-01,
+         2.80202329e-01, -7.80454516e-01,  3.81436870e-02,
+        -1.74066532e+00, -6.57379255e-02],
+       [-1.01303354e-01,  5.63643873e-01,  4.73040879e-01,
+        -3.17757607e-01, -3.14406422e-03, -4.93041181e-04,
+         5.45158148e-01, -3.01195383e-01],
+       [-2.84094691e-01,  8.24250758e-01, -1.65742946e+00,
+         1.11330676e+00,  3.33809406e-02,  2.92117596e-01,
+         1.52916265e+00, -4.40373719e-01]], dtype=float32), array([-0.00909845,  0.07273388, -0.00685287,  0.00458871, -0.05324199,
+       -0.19093427,  0.04946018, -0.03902742], dtype=float32)]
+
+weight of the 1 output dense layer with 1 nodes using relu: (1)
+[array([[-5.8971965e-01],
+       [ 2.2262394e-01],
+       [-3.9154595e-01],
+       [ 5.8291477e-01],
+       [ 1.9602631e-01],
+       [-1.4363849e-04],
+       [ 1.0957868e-01],
+       [-4.1662434e-01]], dtype=float32), array([-0.02429211], dtype=float32)]
+        
+
+        
+then to save and load: 
+
+np.save('Phi_shifted_1Nodes_Layer2.npy', model.get_layer("dense_1").get_weights())
+print(np.load('Phi_shifted_1Nodes_Layer2.npy', allow_pickle=True))
+        
+        
+
+# How we pretrain neural network all individual layers
+model.get_layer("dense_14")
+model.summary()
+layer.set_weights()
+model.get_weights() might be better ?
+
+# Input layer: no activation
+# linear combinaison - matrix algebra to mix two layers into 1
+# will tensor flow optimise it away ?
+# might need an inot layer for eveything we have trained one previously

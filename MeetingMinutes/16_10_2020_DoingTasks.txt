@@ -1,8 +1,0 @@
-Generally use SWAN for fast code and plots.
-Use .py scripts for long training because SWAN can kick you off.
-Can use PyRoot or RootPy for Lorentz boosts.
-
-Theory:
-    Prefer NMSSM/CNMSSm to 2HDM models
-    We can look at unexcluded parameterspace
-    Could publish separate theory paper or include in supplementary
