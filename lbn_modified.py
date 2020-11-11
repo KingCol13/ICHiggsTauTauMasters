@@ -845,21 +845,21 @@ class FeatureFactory(FeatureFactoryBase):
     
 ################################### Calculate phi_star #######################################
 
-    @FeatureFactoryBase.single_feature
-    def big_O_y_tau(self, **opts):
-        """
-        Non-shifted phi_cp angle.
-        """
-        phi_cp_un = tf.reduce_sum(tf.math.multiply(self.lambda_1_perp(), self.lambda_2_perp()), axis=1)
-        big_O = tf.math.reduce_sum(tf.math.multiply(tf.linalg.cross(self.lambda_1_perp(), self.lambda_2_perp()), self.pi_2_star()[:, 1:]), axis=1)
+#     @FeatureFactoryBase.single_feature
+#     def big_O_y_tau(self, **opts):
+#         """
+#         Non-shifted phi_cp angle.
+#         """
+#         phi_cp_un = tf.reduce_sum(tf.math.multiply(self.lambda_1_perp(), self.lambda_2_perp()), axis=1)
+#         big_O = tf.math.reduce_sum(tf.math.multiply(tf.linalg.cross(self.lambda_1_perp(), self.lambda_2_perp()), self.pi_2_star()[:, 1:]), axis=1)
         
-        print(type(big_O), 'This is big_O type')
-        tf_y_1 = (self.pi_1_star()[:,0] - self.pi0_1_star()[:,0])/(self.pi_1_star()[:,0] + self.pi0_1_star()[:,0])
-        tf_y_2 = (self.pi_2_star()[:,0] - self.pi0_2_star()[:,0])/(self.pi_2_star()[:,0] + self.pi0_2_star()[:,0])
+#         print(type(big_O), 'This is big_O type')
+#         tf_y_1 = (self.pi_1_star()[:,0] - self.pi0_1_star()[:,0])/(self.pi_1_star()[:,0] + self.pi0_1_star()[:,0])
+#         tf_y_2 = (self.pi_2_star()[:,0] - self.pi0_2_star()[:,0])/(self.pi_2_star()[:,0] + self.pi0_2_star()[:,0])
         
-        x = tf.convert_to_tensor([phi_cp_un, big_O, tf.multiply(tf_y_1, tf_y_2)], dtype = "float32")
-        x = tf.transpose(x)
-        return x
+#         x = tf.convert_to_tensor([phi_cp_un, big_O, tf.multiply(tf_y_1, tf_y_2)], dtype = "float32")
+#         x = tf.transpose(x)
+#         return x
 
     @FeatureFactoryBase.single_feature
     def only_big_O(self, **opts):
@@ -867,6 +867,8 @@ class FeatureFactory(FeatureFactoryBase):
         big_O required for shifts
         """
         big_O = tf.math.reduce_sum(tf.math.multiply(tf.linalg.cross(self.lambda_1_perp(), self.lambda_2_perp()), self.pi_2_star()[:, 1:]), axis=1)
+        #x = tf.convert_to_tensor([big_O, big_O], dtype = "float32")
+        #x = tf.transpose(x)
         return tf.expand_dims(big_O, -1)
     
     @FeatureFactoryBase.single_feature
