@@ -61,20 +61,21 @@ num_data = len(df)
 #%% Lorentz boosts
 
 # Create our 4-vectors in the lab frame
-pi_1 = Momentum4(df["pi_E_1"], df["pi_px_1"], df["pi_py_1"], df["pi_pz_1"])
-pi_2 = Momentum4(df["pi_E_2"], df["pi_px_2"], df["pi_py_2"], df["pi_pz_2"])
+pi_1_lab = Momentum4(df["pi_E_1"], df["pi_px_1"], df["pi_py_1"], df["pi_pz_1"])
+pi_2_lab = Momentum4(df["pi_E_2"], df["pi_px_2"], df["pi_py_2"], df["pi_pz_2"])
 
 IP1 = Momentum4(df["pi0_E_1"], df["pi0_px_1"], df["pi0_py_1"], df["pi0_pz_1"])
 IP2 = Momentum4(df["pi0_E_2"], df["pi0_px_2"], df["pi0_py_2"], df["pi0_pz_2"])
 
 # Create 4-vectors in the ZMF
-pi_T4M = pi_1 + pi_2
+zmf_momentum = pi_1_lab + pi_2_lab
+boost = Momentum4(zmf_momentum[0], -zmf_momentum[1], -zmf_momentum[2], -zmf_momentum[3])
 
-pi1_ZMF = pi_1.boost_particle(-pi_T4M)
-pi2_ZMF = pi_2.boost_particle(-pi_T4M)
+pi1_ZMF = pi_1_lab.boost_particle(boost)
+pi2_ZMF = pi_2_lab.boost_particle(boost)
 
-IP1_ZMF = IP1.boost_particle(-pi_T4M)
-IP2_ZMF = IP2.boost_particle(-pi_T4M)
+IP1_ZMF = IP1.boost_particle(boost)
+IP2_ZMF = IP2.boost_particle(boost)
 
 #%% Calculate other targets
 # Find the transverse components
@@ -103,7 +104,7 @@ Phi_Shifted=np.where(y_T<0, Phi_Shifted, np.where(Phi_Shifted<np.pi, Phi_Shifted
 #%% Creating features and targets
 
 # Create x and y tensors
-x = tf.convert_to_tensor([pi_1, pi_2, IP1, IP2], dtype=np.float32)
+x = tf.convert_to_tensor([pi_1_lab, pi_2_lab, IP1, IP2], dtype=np.float32)
 x = tf.transpose(x, [2, 0, 1])
 #x = tf.convert_to_tensor([pi1_ZMF, pi2_ZMF, IP1_ZMF, IP2_ZMF], dtype=np.float32)
 #x  =  tf.transpose(x, [2, 0, 1])

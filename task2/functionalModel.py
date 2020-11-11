@@ -71,12 +71,13 @@ pi0_2_lab = Momentum4(df["pi0_E_2"], df["pi0_px_2"], df["pi0_py_2"], df["pi0_pz_
 
 # Create 4-vectors in the ZMF
 zmf_momentum = pi_1_lab + pi_2_lab
+boost = Momentum4(zmf_momentum[0], -zmf_momentum[1], -zmf_momentum[2], -zmf_momentum[3])
 
-pi_1_ZMF = pi_1_lab.boost_particle(-zmf_momentum)
-pi_2_ZMF = pi_2_lab.boost_particle(-zmf_momentum)
+pi_1_ZMF = pi_1_lab.boost_particle(boost)
+pi_2_ZMF = pi_2_lab.boost_particle(boost)
 
-pi0_1_ZMF = pi0_1_lab.boost_particle(-zmf_momentum)
-pi0_2_ZMF = pi0_2_lab.boost_particle(-zmf_momentum)
+pi0_1_ZMF = pi0_1_lab.boost_particle(boost)
+pi0_2_ZMF = pi0_2_lab.boost_particle(boost)
 
 #%% Calculate other targets
 # Find the transverse components
