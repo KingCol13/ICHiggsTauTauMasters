@@ -115,7 +115,7 @@ x = tf.transpose(x, [2, 0, 1])
 #weird order from LBN
 #y = tf.transpose(y, [2, 1, 0])
 
-y = tf.transpose(tf.convert_to_tensor(big_O, dtype=np.float32))
+y = tf.transpose(tf.convert_to_tensor(phi_shift_2, dtype=np.float32))
 
 #%% Building network
 
