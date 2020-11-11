@@ -332,11 +332,19 @@ plt.savefig('Test_4')
 #all the output we want  in some boosted frame
 LBN_output_features = ["only_phi_CP_un", "only_big_O", "only_y_tau"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", "
 
+#define our LBN layer:
+myLBNLayer = LBNLayer((4, 4), 4, n_restframes=1, boost_mode=LBN.PRODUCT, features=LBN_output_features)
+
+#set the LBN weights to known values
+#combined particles are set to same as input
+#boost frame is set to pi1+pi2
+weights = [np.eye(4), np.reshape(np.array([0, 1, 0, 1], dtype=np.float32), (4,1))]
+myLBNLayer.set_weights(weights)
 
 #define NN model and compile, now merging 2 3 and all the way to output
 model = tf.keras.models.Sequential([
     #define the layer, thanks Kingsley
-    LBNLayer((4, 4), 4, n_restframes = 1, boost_mode = LBN.PRODUCT, features = LBN_output_features),
+    myLBNLayer,
     tf.keras.layers.Dense(node_nb, activation = 'relu'),
     tf.keras.layers.Dense(node_nb, activation = 'relu'),
     tf.keras.layers.Dense(1),

@@ -130,8 +130,6 @@ myLBNLayer = LBNLayer((4, 4), 4, n_restframes=1, boost_mode=LBN.PRODUCT, feature
 weights = [np.eye(4), np.reshape(np.array([0, 1, 0, 1], dtype=np.float32), (4,1))]
 myLBNLayer.set_weights(weights)
 
-node_nb=30
-
 model = tf.keras.models.Sequential([
     #define the layer, thanks Kingsley
     myLBNLayer
