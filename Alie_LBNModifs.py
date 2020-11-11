@@ -127,16 +127,17 @@ pi0_2_4Mom=Momentum4(df4["pi0_E_2"],df4["pi0_px_2"],df4["pi0_py_2"],df4["pi0_pz_
 
 #This is the COM frame of the two charged pions w.r.t. which we'll boost
 ref_COM_4Mom=Momentum4(pi_1_4Mom+pi_2_4Mom)
+boost = Momentum4(ref_COM_4Mom[0], -ref_COM_4Mom[1], -ref_COM_4Mom[2], -ref_COM_4Mom[3])
 
 energies=[df4["pi_E_1"],df4["pi_E_2"],df4["pi0_E_1"],df4["pi0_E_2"]]
 
 #Lorentz boost everything in the ZMF of the two charged pions
-pi0_1_4Mom_star=pi0_1_4Mom.boost_particle(-ref_COM_4Mom)
-pi0_2_4Mom_star=pi0_2_4Mom.boost_particle(-ref_COM_4Mom)
+pi0_1_4Mom_star=pi0_1_4Mom.boost_particle(boost)
+pi0_2_4Mom_star=pi0_2_4Mom.boost_particle(boost)
 
 #Lorentz boost everything in the ZMF of the two neutral pions
-pi_1_4Mom_star=pi_1_4Mom.boost_particle(-ref_COM_4Mom)
-pi_2_4Mom_star=pi_2_4Mom.boost_particle(-ref_COM_4Mom)
+pi_1_4Mom_star=pi_1_4Mom.boost_particle(boost)
+pi_2_4Mom_star=pi_2_4Mom.boost_particle(boost)
 
 
 #calculating the perpependicular component
