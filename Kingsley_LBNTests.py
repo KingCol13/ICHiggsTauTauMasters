@@ -120,7 +120,7 @@ y = tf.transpose(tf.convert_to_tensor(big_O, dtype=np.float32))
 #%% Building network
 
 #features for LBN output
-LBN_output_features = ["lambda_1_perp"]
+LBN_output_features = ["only_phi_CP"]
 #LBN_output_features = ["E", "px", "py", "pz"]
 
 #define our LBN layer:

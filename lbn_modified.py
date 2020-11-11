@@ -867,9 +867,7 @@ class FeatureFactory(FeatureFactoryBase):
         big_O required for shifts
         """
         big_O = tf.math.reduce_sum(tf.math.multiply(tf.linalg.cross(self.lambda_1_perp(), self.lambda_2_perp()), self.pi_2_star()[:, 1:]), axis=1)
-        x = tf.convert_to_tensor([big_O, big_O], dtype = "float32")
-        x = tf.transpose(x)
-        return x
+        return tf.expand_dims(big_O, -1)
     
     @FeatureFactoryBase.single_feature
     def only_phi_CP_un(self, **opts):
@@ -880,9 +878,7 @@ class FeatureFactory(FeatureFactoryBase):
         
         phi_cp_un = tf.clip_by_value(phi_cp_un, -1 + self.epsilon, 1 - self.epsilon)
         phi_cp_un = tf.math.acos(phi_cp_un)
-        x = tf.convert_to_tensor([phi_cp_un, phi_cp_un], dtype = "float32")
-        x = tf.transpose(x)
-        return x
+        return tf.expand_dims(phi_cp_un, -1)
     
     @FeatureFactoryBase.single_feature
     def only_y_tau(self, **opts):
@@ -892,10 +888,8 @@ class FeatureFactory(FeatureFactoryBase):
         tf_y_1 = (self.pi_1_star()[...,0] - self.pi0_1_star()[...,0])/(self.pi_1_star()[...,0] + self.pi0_1_star()[...,0])
         tf_y_2 = (self.pi_2_star()[...,0] - self.pi0_2_star()[...,0])/(self.pi_2_star()[...,0] + self.pi0_2_star()[...,0])
         
-        
-        x = tf.convert_to_tensor([tf.math.multiply(tf_y_1,tf_y_2), tf.math.multiply(tf_y_1,tf_y_2)], dtype = "float32")
-        x = tf.transpose(x)
-        return x
+        tf_y_tau = tf.math.multiply(tf_y_1,tf_y_2)
+        return tf.expand_dims(tf_y_tau, -1)
     
     
     @FeatureFactoryBase.single_feature
@@ -903,16 +897,13 @@ class FeatureFactory(FeatureFactoryBase):
         """
         first Shift in phi_CP
         """
-        phi_cp = tf.where(self.only_big_O()[...,0]<0, self.only_phi_CP_un()[...,0], 2*np.pi-self.only_phi_CP_un()[...,0])
+        phi_cp = tf.where(self.only_big_O()[...,0]>0, self.only_phi_CP_un()[...,0], 2*np.pi-self.only_phi_CP_un()[...,0])
         
         #and here back to cos, because the NN doesn't deal with cos function that well...
         #phi_cp = tf.where(self.only_y_tau()[...,0]<0, phi_cp, 
                           #tf.where(phi_cp<pi, phi_cp+pi, phi_cp-pi))
         
-        #print(phi_cp.shape, 'this is the shape again')
-        x = tf.convert_to_tensor([phi_cp, phi_cp], dtype = "float32")
-        x = tf.transpose(x)
-        return x
+        return tf.expand_dims(phi_cp, -1)
 
     @FeatureFactoryBase.single_feature
     def only_phi_CP(self, **opts):
@@ -925,10 +916,7 @@ class FeatureFactory(FeatureFactoryBase):
         
         phi_cp = tf.where(self.only_y_tau()[...,0]<0, phi_cp, tf.where(phi_cp<pi, phi_cp+np.pi, phi_cp-pi))
         
-        #print(phi_cp.shape, 'this is the shape again')
-        x = tf.convert_to_tensor([phi_cp, phi_cp], dtype = "float32")
-        x = tf.transpose(x)
-        return x
+        return tf.expand_dims(phi_cp, -1)
    
     
 
