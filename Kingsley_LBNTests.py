@@ -108,35 +108,34 @@ y_tau = np.array(df['y_1_1']*df['y_1_2'])
 phi_shift_2=np.where(y_tau<0, phi_shift_1, np.where(phi_shift_1<np.pi, phi_shift_1+np.pi, phi_shift_1-np.pi))
 
 #%% Features and targets
-
-x = tf.convert_to_tensor([pi_1_lab, pi_2_lab, pi0_1_lab, pi0_2_lab], dtype=np.float32)
+x = tf.convert_to_tensor([pi0_1_lab, pi_1_lab, pi0_2_lab, pi_2_lab], dtype=np.float32)
 x = tf.transpose(x, [2, 0, 1])
 
-y = tf.convert_to_tensor([pi_1_ZMF, pi_2_ZMF, pi0_1_ZMF, pi0_2_ZMF], dtype=np.float32)
+#y = tf.convert_to_tensor([pi_1_ZMF, pi_2_ZMF, pi0_1_ZMF, pi0_2_ZMF], dtype=np.float32)
 #weird order from LBN
-y = tf.transpose(y, [2, 1, 0])
+#y = tf.transpose(y, [2, 1, 0])
 
-#y = tf.transpose(tf.convert_to_tensor(big_O, dtype=np.float32))
+y = tf.transpose(tf.convert_to_tensor(big_O, dtype=np.float32))
 
 #%% Building network
 
 #features for LBN output
-#LBN_output_features = ["only_big_O"]
-LBN_output_features = ["E", "px", "py", "pz"]
+LBN_output_features = ["lambda_1_perp"]
+#LBN_output_features = ["E", "px", "py", "pz"]
 
 #define our LBN layer:
 myLBNLayer = LBNLayer((4, 4), 4, n_restframes=1, boost_mode=LBN.PRODUCT, features=LBN_output_features)
 
 #set the LBN weights to known values
-weights = [np.eye(4), np.reshape(np.array([1, 1, 0, 0], dtype=np.float32), (4,1))]
+weights = [np.eye(4), np.reshape(np.array([0, 1, 0, 1], dtype=np.float32), (4,1))]
 myLBNLayer.set_weights(weights)
 
 node_nb=30
 
 model = tf.keras.models.Sequential([
     #define the layer, thanks Kingsley
-    myLBNLayer,
-    tf.keras.layers.Reshape((4, 4))
+    myLBNLayer
+    #tf.keras.layers.Reshape((4, 4))
 ])
 
 loss_fn = tf.keras.losses.MeanSquaredError()
