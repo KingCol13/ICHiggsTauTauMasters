@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, roc_curve, roc_auc_score
-import xgboost as xgb
 
 import matplotlib as mpl
 mpl.use('Agg')
@@ -133,7 +132,7 @@ pi0_2_4Mom=Momentum4(df4["pi0_E_2"],df4["pi0_px_2"],df4["pi0_py_2"],df4["pi0_pz_
 ref_COM_4Mom=Momentum4(pi_1_4Mom+pi_2_4Mom)
 boost = Momentum4(ref_COM_4Mom[0], -ref_COM_4Mom[1], -ref_COM_4Mom[2], -ref_COM_4Mom[3])
 
-energies=[df4["pi_E_1"],df4["pi_E_2"],df4["pi0_E_1"],df4["pi0_E_2"]]
+#energies=[df4["pi_E_1"],df4["pi_E_2"],df4["pi0_E_1"],df4["pi0_E_2"]]
 
 #Lorentz boost everything in the ZMF of the two charged pions
 pi0_1_4Mom_star=pi0_1_4Mom.boost_particle(boost)
@@ -168,7 +167,9 @@ cross=np.array(np.cross(pi0_1_3Mom_star_perp.transpose(),pi0_2_3Mom_star_perp.tr
 bigO=dot_product(pi_2_4Mom_star[1:],cross)
 
 #perform the shift w.r.t. O* sign
-phi_CP_1 = np.where(bigO>=0, 2*np.pi-phi_CP, phi_CP)#, phi_CP)
+
+
+phi_CP_1=np.where(bigO>0, phi_CP_unshifted, 2*np.pi-phi_CP_unshifted)
 
 phi_CP = phi_CP_1
 
@@ -197,7 +198,7 @@ node_nb=30#64#48#32#64
 #The target
 #target = df4[["aco_angle_1"]]
 #target = [pi_1_4Mom_star, pi_2_4Mom_star, pi0_1_4Mom_star, pi0_2_4Mom_star]
-target = [phi_CP]#[]#, bigO, y_T]
+target = [phi_CP]#df4[["aco_angle_1"]]#[]#, bigO, y_T]
 y = tf.transpose(tf.convert_to_tensor(target, dtype=np.float32))
 #tf.transpose(tf.convert_to_tensor(target, dtype=np.float32))
 #y = tf.transpose(y, [2, 0, 1])  #this is the correct transposition ?
@@ -220,11 +221,11 @@ model = tf.keras.models.Sequential()
 
 
 fig = plt.figure(figsize=(10,10), frameon = False)
-plt.title("Neural Network Performance for phi_CP \n Single input feature, [PRODUCT, 30r, 30r, MeanSquareError] (100 epochs)", fontsize = 'xx-large')
-#plt.axis('off')
+plt.title("Neural Network Performance for phi_CP \n Single input feature, [PRODUCT, 30r, 30r, MeanSquareError] (50 epochs)", fontsize = 'xx-large')
+plt.axis('off')
 
 #all the output we want  in some boosted frame
-LBN_output_features = ["only_phi_CP_1", "only_y_tau"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", ""E", "px", "py", "pz"]
+LBN_output_features = ["only_phi_CP_1", "only_y_tau", "only_big_O"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", ""E", "px", "py", "pz"]
 
 
 #define NN model and compile, now merging 2 3 and all the way to output
@@ -243,8 +244,10 @@ model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
 
 
 #train model
-history = model.fit(x, y, validation_split = 0.3, epochs = 100)
+history = model.fit(x, y, validation_split = 0.3, epochs = 50)
 
+
+need = 'big_O'
 
 
 d = -3
@@ -260,15 +263,124 @@ def frac(d = -2):
 hist1 = np.array(model(x)[:, 0])
 hist2 = np.array(y[:, 0])
 
-#ax = fig.add_subplot(2,2,1)
-plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN $\phi_{CP}$ component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd, frac(dd), d, frac(d)))
-plt.hist(hist2, bins = 100, alpha = 0.5, label = 'True $\phi_{CP}$ - Features: %s'%LBN_output_features[0])
+ax = fig.add_subplot(2,2,1)
+plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN %s component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(need, dd, frac(dd), d, frac(d)))
+plt.hist(hist2, bins = 100, alpha = 0.5, label = 'True %s - Features: %s'%(need, LBN_output_features[0]))
 plt.ylabel("Frequency", fontsize = 'x-large')
-plt.xlabel("phi_CP (epsilon = 10e-5)", fontsize = 'x-large')
+plt.xlabel("%s (epsilon = 10e-5)"%(need), fontsize = 'x-large')
 plt.grid()
 plt.legend()#prop = {'size', 10})
 
-plt.savefig('Test_31')
+plt.savefig('Test_36')
+
+
+def checks(df):
+    #The different *initial* 4 vectors, (E,px,py,pz)
+    pi_1 = np.array([df["pi_E_1"],df["pi_px_1"],df["pi_py_1"],df["pi_pz_1"]])
+    pi_2 = np.array([df["pi_E_2"],df["pi_px_2"],df["pi_py_2"],df["pi_pz_2"]])
+
+    pi0_1 = np.array([df["pi0_E_1"],df["pi0_px_1"],df["pi0_py_1"],df["pi0_pz_1"]])
+    pi0_2 = np.array([df["pi0_E_2"],df["pi0_px_2"],df["pi0_py_2"],df["pi0_pz_2"]])
+
+    #Charged and neutral pion momenta
+    pi_1_4Mom = Momentum4(df["pi_E_1"],df["pi_px_1"],df["pi_py_1"],df["pi_pz_1"])
+    pi_2_4Mom = Momentum4(df["pi_E_2"],df["pi_px_2"],df["pi_py_2"],df["pi_pz_2"])
+
+    #Same for the pi0
+    pi0_1_4Mom = Momentum4(df["pi0_E_1"],df["pi0_px_1"],df["pi0_py_1"],df["pi0_pz_1"])
+    pi0_2_4Mom = Momentum4(df["pi0_E_2"],df["pi0_px_2"],df["pi0_py_2"],df["pi0_pz_2"])
+    
+    inputs = [pi0_1_4Mom, pi_1_4Mom, pi0_2_4Mom, pi_2_4Mom]
+    x = tf.convert_to_tensor(inputs, dtype=np.float32)
+    x = tf.transpose(x, [2, 0, 1])   
+    
+    #This is the COM frame of the two charged pions w.r.t. which we'll boost
+    ref_COM_4Mom=Momentum4(pi_1_4Mom+pi_2_4Mom)
+    boost = Momentum4(ref_COM_4Mom[0], -ref_COM_4Mom[1], -ref_COM_4Mom[2], -ref_COM_4Mom[3])
+
+    #energies=[df4["pi_E_1"],df4["pi_E_2"],df4["pi0_E_1"],df4["pi0_E_2"]]
+
+    #Lorentz boost everything in the ZMF of the two charged pions
+    pi0_1_4Mom_star=pi0_1_4Mom.boost_particle(boost)
+    pi0_2_4Mom_star=pi0_2_4Mom.boost_particle(boost)
+
+    #Lorentz boost everything in the ZMF of the two neutral pions
+    pi_1_4Mom_star=pi_1_4Mom.boost_particle(boost)
+    pi_2_4Mom_star=pi_2_4Mom.boost_particle(boost)
+
+
+    #calculating the perpependicular component
+    pi0_1_3Mom_star_perp=cross_product(pi0_1_4Mom_star[1:],pi_1_4Mom_star[1:])
+    pi0_2_3Mom_star_perp=cross_product(pi0_2_4Mom_star[1:],pi_2_4Mom_star[1:])
+
+    #Now normalise:
+    pi0_1_3Mom_star_perp=pi0_1_3Mom_star_perp/norm(pi0_1_3Mom_star_perp)
+    pi0_2_3Mom_star_perp=pi0_2_3Mom_star_perp/norm(pi0_2_3Mom_star_perp)
+
+    pi0_1_4Mom_star_perp = [pi0_1_4Mom_star[0], pi0_1_3Mom_star_perp[0], pi0_1_3Mom_star_perp[1], pi0_1_3Mom_star_perp[2]]
+    pi0_2_4Mom_star_perp = [pi0_1_4Mom_star[0], pi0_2_3Mom_star_perp[0], pi0_2_3Mom_star_perp[1], pi0_2_3Mom_star_perp[2]]
+
+    #Calculating phi_star
+    phi_CP_unshifted=np.arccos(dot_product(pi0_1_3Mom_star_perp,pi0_2_3Mom_star_perp))
+
+    phi_CP=phi_CP_unshifted
+
+    #The energy ratios
+    y_T = np.array(df4['y_1_1']*df4['y_1_2'])
+
+    #The O variable
+    cross=np.array(np.cross(pi0_1_3Mom_star_perp.transpose(),pi0_2_3Mom_star_perp.transpose()).transpose())
+    bigO=dot_product(pi_2_4Mom_star[1:],cross)
+
+    #perform the shift w.r.t. O* sign
+    phi_CP_1=np.where(bigO>0, phi_CP_unshifted, 2*np.pi-phi_CP_unshifted)
+    
+    target_y = df[["aco_angle_1"]]#[]#, bigO, y_T]
+    y = tf.convert_to_tensor(target_y, dtype=np.float32)    
+    return x,y
+
+
+x,y = checks(df_ps)
+hist3 = np.array(model(x)[:, 0])
+hist4 = np.array(y[:, 0])
+
+ax = fig.add_subplot(2,2,2)
+plt.hist(hist3, bins = 100, alpha = 0.5, label = "NN %s PS component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(need, dd, frac(dd), d, frac(d)))
+plt.hist(hist4, bins = 100, alpha = 0.5, label = 'True %s PS - Features: %s'%(need, LBN_output_features[0]))
+plt.ylabel("Frequency", fontsize = 'x-large')
+plt.xlabel("%s PS (epsilon = 10e-5)"%(need), fontsize = 'x-large')
+plt.grid()
+plt.legend()#prop = {'size', 10})
+
+plt.savefig('Test_36')
+
+
+x,y = checks(df_sm)
+hist5 = np.array(model(x)[:, 0])
+hist6 = np.array(y[:, 0])
+
+ax = fig.add_subplot(2,2,3)
+plt.hist(hist5, bins = 100, alpha = 0.5, label = "NN %s SM component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(need, dd, frac(dd), d, frac(d)))
+plt.hist(hist6, bins = 100, alpha = 0.5, label = 'True %s SM - Features: %s'%(need, LBN_output_features[0]))
+plt.ylabel("Frequency", fontsize = 'x-large')
+plt.xlabel("%s SM (epsilon = 10e-5)"%(need), fontsize = 'x-large')
+plt.grid()
+plt.legend()#prop = {'size', 10})
+
+plt.savefig('Test_36')
+
+ax = fig.add_subplot(2,2,4)
+plt.hist(hist5, bins = 100, alpha = 0.5, label = "NN %s SM component")# : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(need, dd, frac(dd), d, frac(d)))
+plt.hist(hist3, bins = 100, alpha = 0.5, label = "NN %s PS component")# : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(need, dd, frac(dd), d, frac(d)))
+plt.ylabel("Frequency", fontsize = 'x-large')
+plt.xlabel("Comparision %s SM-PS (epsilon = 10e-5)"%(need), fontsize = 'x-large')
+plt.grid()
+plt.legend()#prop = {'size', 10})
+
+plt.savefig('Test_36')
+
+
+
 
 raise End
 
