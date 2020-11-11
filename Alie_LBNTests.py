@@ -167,10 +167,13 @@ cross=np.array(np.cross(pi0_1_3Mom_star_perp.transpose(),pi0_2_3Mom_star_perp.tr
 bigO=dot_product(pi_2_4Mom_star[1:],cross)
 
 #perform the shift w.r.t. O* sign
-phi_CP=np.where(bigO>=0, 2*np.pi-phi_CP, phi_CP)#, phi_CP)
+phi_CP_1 = np.where(bigO>=0, 2*np.pi-phi_CP, phi_CP)#, phi_CP)
+
+phi_CP = phi_CP_1
 
 print('len phi', len(phi_CP))
 
+phi_CP_2 = np.where(y_T<=0, phi_CP+np.pi, phi_CP-np.pi)
 
 #additionnal shift that needs to be done do see differences between odd and even scenarios, with y=Energy ratios
 phi_CP=np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_CP)
@@ -193,7 +196,7 @@ node_nb=30#64#48#32#64
 #The target
 #target = df4[["aco_angle_1"]]
 #target = [pi_1_4Mom_star, pi_2_4Mom_star, pi0_1_4Mom_star, pi0_2_4Mom_star]
-target = [np.cos(phi_CP)]#[]#, bigO, y_T]
+target = [phi_CP]#[]#, bigO, y_T]
 y = tf.transpose(tf.convert_to_tensor(target, dtype=np.float32))
 #tf.transpose(tf.convert_to_tensor(target, dtype=np.float32))
 #y = tf.transpose(y, [2, 0, 1])  #this is the correct transposition ?
@@ -216,11 +219,11 @@ model = tf.keras.models.Sequential()
 
 
 fig = plt.figure(figsize=(10,10), frameon = False)
-plt.title("Neural Network Performance for phi_CP \n Single input feature, [PRODUCT, 30r, 30r, MeanSquareError] (25 epochs)", fontsize = 'xx-large')
+plt.title("Neural Network Performance for phi_CP \n Single input feature, [PRODUCT, 30r, 30r, MeanSquareError] (100 epochs)", fontsize = 'xx-large')
 #plt.axis('off')
 
 #all the output we want  in some boosted frame
-LBN_output_features = ["only_phi_CP"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", ""E", "px", "py", "pz"]
+LBN_output_features = ["only_phi_CP_1", "only_y_tau"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", ""E", "px", "py", "pz"]
 
 
 #define NN model and compile, now merging 2 3 and all the way to output
@@ -239,7 +242,7 @@ model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
 
 
 #train model
-history = model.fit(x, y, validation_split = 0.3, epochs = 25)
+history = model.fit(x, y, validation_split = 0.3, epochs = 100)
 
 
 
@@ -260,11 +263,11 @@ hist2 = np.array(y[:, 0])
 plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN $\phi_{CP}$ component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(dd, frac(dd), d, frac(d)))
 plt.hist(hist2, bins = 100, alpha = 0.5, label = 'True $\phi_{CP}$ - Features: %s'%LBN_output_features[0])
 plt.ylabel("Frequency", fontsize = 'x-large')
-plt.xlabel("cos(phi_CP) (epsilon = 10e-5)", fontsize = 'x-large')
+plt.xlabel("phi_CP (epsilon = 10e-5)", fontsize = 'x-large')
 plt.grid()
 plt.legend()#prop = {'size', 10})
 
-plt.savefig('Test_21')
+plt.savefig('Test_31')
 
 raise End
 

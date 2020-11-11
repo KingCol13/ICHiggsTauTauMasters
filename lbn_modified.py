@@ -22,6 +22,9 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework import ops as tf_ops
 
+import math as m
+pi = tf.constant(m.pi)
+
 
 # tf version flag
 TF2 = tf.__version__.startswith("2.")
@@ -896,18 +899,34 @@ class FeatureFactory(FeatureFactoryBase):
     
     
     @FeatureFactoryBase.single_feature
-    def only_phi_CP(self, **opts):
+    def only_phi_CP_1(self, **opts):
         """
-        Shifted phi_CP
+        first Shift in phi_CP
         """
         phi_cp = tf.where(self.only_big_O()[...,0]<0, self.only_phi_CP_un()[...,0], 2*np.pi-self.only_phi_CP_un()[...,0])
         
         #and here back to cos, because the NN doesn't deal with cos function that well...
-        phi_cp = tf.where(self.only_y_tau()[...,0]<0, phi_cp, 
-                          tf.where(phi_cp<np.pi, phi_cp+np.pi, phi_cp-np.pi))
+        #phi_cp = tf.where(self.only_y_tau()[...,0]<0, phi_cp, 
+                          #tf.where(phi_cp<pi, phi_cp+pi, phi_cp-pi))
         
         #print(phi_cp.shape, 'this is the shape again')
-        x = tf.convert_to_tensor([tf.math.cos(phi_cp), tf.math.cos(phi_cp)], dtype = "float32")
+        x = tf.convert_to_tensor([phi_cp, phi_cp], dtype = "float32")
+        x = tf.transpose(x)
+        return x
+
+    @FeatureFactoryBase.single_feature
+    def only_phi_CP(self, **opts):
+        """
+        fuly Shifted phi_CP
+        """
+        phi_cp = self.only_phi_CP_1()[..., 0]
+        
+        #and here back to cos, because the NN doesn't deal with cos function that well...
+        
+        phi_cp = tf.where(self.only_y_tau()[...,0]<0, phi_cp, tf.where(phi_cp<pi, phi_cp+np.pi, phi_cp-pi))
+        
+        #print(phi_cp.shape, 'this is the shape again')
+        x = tf.convert_to_tensor([phi_cp, phi_cp], dtype = "float32")
         x = tf.transpose(x)
         return x
    
