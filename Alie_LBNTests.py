@@ -16,15 +16,12 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, roc_curve, roc_auc_score
-import xgboost as xgb
 
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 from lbn_modified import LBN, LBNLayer
 import tensorflow as tf
-import keras
-
 
 #for some reason pylorentz is installed somewhere differently ?
 sys.path.append("/eos/home-a/acraplet/.local/lib/python2.7/site-packages")

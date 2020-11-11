@@ -469,7 +469,7 @@ class LBN(object):
         # determine the scalar beta and gamma values
         beta = tf.sqrt(tf.reduce_sum(tf.square(pvec), axis=1)) / tf.squeeze(E, axis=-1)
         #Kingsley changed this line, added minus:
-        gamma = -1. / tf.sqrt(1. - tf.square(beta) + self.epsilon)
+        gamma = 1. / tf.sqrt(1. - tf.square(beta) + self.epsilon)
 
         # the e vector, (1, -betavec / beta)^T
         beta = tf.expand_dims(beta, axis=-1)

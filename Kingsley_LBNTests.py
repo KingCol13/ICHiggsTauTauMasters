@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Oct 27 01:55:02 2020
+Created on Wed Nov 11 15:43:18 2020
 
 @author: kingsley
-
-Trying to make LBN work as expected
 """
 
 #%% Initial imports and setup
@@ -18,7 +16,7 @@ import matplotlib.pyplot as plt
 
 from pylorentz import Momentum4
 from pylorentz import Position4
-from lbn import LBN, LBNLayer
+from lbn_modified import LBN, LBNLayer
 
 # stop tensorflow trying to overfill GPU memory
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -29,7 +27,6 @@ if gpus:
   except RuntimeError as e:
     print(e)
     
-
 #%% Data loading
 
 # loading the tree
@@ -63,6 +60,7 @@ df = df[
 num_data = len(df)
 
 print("Loaded data.")
+
 #%% Create momenta and boost
 
 # Create our 4-vectors in the lab frame
@@ -83,6 +81,32 @@ pi0_1_ZMF = pi0_1_lab.boost_particle(boost)
 pi0_2_ZMF = pi0_2_lab.boost_particle(boost)
 
 print("Boosted particles.")
+
+#%% Calculate other targets
+# Find the transverse components
+pi0_1_trans = np.cross(pi0_1_ZMF[1:,:].transpose(), pi_1_ZMF[1:, :].transpose())
+pi0_2_trans = np.cross(pi0_2_ZMF[1:,:].transpose(), pi_2_ZMF[1:, :].transpose())
+
+# Normalise the lambda vectors
+pi0_1_trans = pi0_1_trans/np.linalg.norm(pi0_1_trans, ord=2, axis=1, keepdims=True)
+pi0_2_trans = pi0_2_trans/np.linalg.norm(pi0_2_trans, ord=2, axis=1, keepdims=True)
+
+#Calculate Phi_ZMF using dot product and arccos
+dot = np.sum(pi0_1_trans*pi0_2_trans, axis=1)
+phi_shift_0 = np.arccos(dot)
+
+# Calculate O
+preO = np.cross(pi0_1_trans, pi0_2_trans).transpose()*np.array(pi_2_ZMF[1:, :])
+big_O = np.sum(preO, axis=0)
+# Shift Phi based on O's sign
+phi_shift_1=np.where(big_O>0, phi_shift_0, 2*np.pi-phi_shift_0)
+
+# Shift phi based on energy ratios
+y_1 = np.array(df['y_1_1'])
+y_2 = np.array(df['y_1_2'])
+y_tau = np.array(df['y_1_1']*df['y_1_2'])
+phi_shift_2=np.where(y_tau<0, phi_shift_1, np.where(phi_shift_1<np.pi, phi_shift_1+np.pi, phi_shift_1-np.pi))
+
 #%% Features and targets
 
 x = tf.convert_to_tensor([pi_1_lab, pi_2_lab, pi0_1_lab, pi0_2_lab], dtype=np.float32)
@@ -92,22 +116,27 @@ y = tf.convert_to_tensor([pi_1_ZMF, pi_2_ZMF, pi0_1_ZMF, pi0_2_ZMF], dtype=np.fl
 #weird order from LBN
 y = tf.transpose(y, [2, 1, 0])
 
+#y = tf.transpose(tf.convert_to_tensor(big_O, dtype=np.float32))
+
 #%% Building network
 
 #features for LBN output
+#LBN_output_features = ["only_big_O"]
 LBN_output_features = ["E", "px", "py", "pz"]
 
 #define our LBN layer:
 myLBNLayer = LBNLayer((4, 4), 4, n_restframes=1, boost_mode=LBN.PRODUCT, features=LBN_output_features)
 
-#set the weights to known values
+#set the LBN weights to known values
 weights = [np.eye(4), np.reshape(np.array([1, 1, 0, 0], dtype=np.float32), (4,1))]
 myLBNLayer.set_weights(weights)
 
-#define NN model and compile
+node_nb=30
+
 model = tf.keras.models.Sequential([
+    #define the layer, thanks Kingsley
     myLBNLayer,
-    tf.keras.layers.Reshape((4,4)),
+    tf.keras.layers.Reshape((4, 4))
 ])
 
 loss_fn = tf.keras.losses.MeanSquaredError()
@@ -117,25 +146,6 @@ model.compile(optimizer='adam',
 
 print("Model compiled.")
 
-#%% Training model
-
-#train model
-history = model.fit(x, y, validation_split=0.3, epochs=5)
-
-#plot traning
-plt.figure()
-plt.plot(history.history['loss'], label="Training Loss")
-plt.plot(history.history['val_loss'], label="Validation Loss")
-plt.title("Loss on Iteration")
-plt.xlabel("Epoch")
-plt.ylabel("Loss")
-plt.legend()
-plt.show()
 #%% Evaluating model
 
 model.evaluate(x, y)
-
-#%%
-
-def get_m(momentum):
-    return np.sqrt(momentum[0]*momentum[0] - momentum[1]*momentum[1] - momentum[2]*momentum[2] - momentum[3]*momentum[3])
