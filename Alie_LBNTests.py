@@ -157,7 +157,7 @@ pi0_2_4Mom_star_perp = [pi0_1_4Mom_star[0], pi0_2_3Mom_star_perp[0], pi0_2_3Mom_
 #Calculating phi_star
 phi_CP_unshifted=np.arccos(dot_product(pi0_1_3Mom_star_perp,pi0_2_3Mom_star_perp))
 
-phi_CP=phi_CP_unshifted
+phi_CP = phi_CP_unshifted
 
 #The energy ratios
 y_T = np.array(df4['y_1_1']*df4['y_1_2'])
@@ -178,7 +178,7 @@ print('len phi', len(phi_CP))
 phi_CP_2 = np.where(y_T<=0, phi_CP+np.pi, phi_CP-np.pi)
 
 #additionnal shift that needs to be done do see differences between odd and even scenarios, with y=Energy ratios
-phi_CP=np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_CP)
+phi_CP = np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_CP)
 
 
 
@@ -186,20 +186,28 @@ phi_CP=np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_
 
 
 #inputs=[phi_CP_unshifted, bigO, y_T]
-inputs= [pi0_1_4Mom, pi_1_4Mom, pi0_2_4Mom, pi_2_4Mom]
+inputs = [pi0_1_4Mom, pi_1_4Mom, pi0_2_4Mom, pi_2_4Mom]
 #inputs = [*pi0_2_4Mom_star_perp, *pi0_1_4Mom_star_perp, df4['y_1_1'], df4['y_1_2'], *pi_2_4Mom_star[1:]]
 
 x = tf.convert_to_tensor(inputs, dtype=np.float32)
 x = tf.transpose(x, [2, 0, 1])  #this is the correct transposition ?
 # x = np.array(inputs,dtype=np.float32).transpose()
 
-node_nb = 100 #64#48#32#64
+
+node_nb = 30 #64#48#32#64
 
 #The target
 #target = df4[["aco_angle_1"]]
 #target = [pi_1_4Mom_star, pi_2_4Mom_star, pi0_1_4Mom_star, pi0_2_4Mom_star]
-target = df4[["gen_phitt"]]#[phi_CP]#df4[["aco_angle_1"]]#[]#, bigO, y_T]
-y = tf.convert_to_tensor(target, dtype=np.float32) # tf.transpose(
+
+target_1 = [phi_CP_1, y_T]
+y_1 = tf.transpose(tf.convert_to_tensor(target_1, dtype = np.float32))
+
+target = [phi_CP]#phi_CP_1, y_T] #df4[["aco_angle_1"]]#[phi_CP]#df4[["aco_angle_1"]]#[]#, bigO, y_T]
+y = tf.transpose(tf.convert_to_tensor(target, dtype=np.float32)) # tf.transpose(
+
+
+
 #tf.transpose(tf.convert_to_tensor(target, dtype=np.float32))
 #y = tf.transpose(y, [2, 0, 1])  #this is the correct transposition ?
 #y = np.array(target,dtype=np.float32).transpose() #this is the target
@@ -221,11 +229,11 @@ model = tf.keras.models.Sequential()
 
 
 fig = plt.figure(figsize=(10,10), frameon = False)
-plt.title("Neural Network Performance for phi_CP \n Single input feature, [PRODUCT, 100r, 100r, MeanSquareError] (25 epochs)", fontsize = 'xx-large')
-#plt.axis('off')
+plt.title("Neural Network Performance for phi_CP \n[PRODUCT pre_trained, 30r, 30r, MeanSquareError] (25 and 50 epochs)", fontsize = 'xx-large')
+plt.axis('off')
 
 #all the output we want  in some boosted frame
-LBN_output_features = ["only_phi_CP_un", "only_big_O", "only_y_tau"]#, "only_y_tau", "only_big_O"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", ""E", "px", "py", "pz"]
+LBN_output_features = ["only_phi_CP_1", "only_y_tau"]#, "only_big_O", "only_y_tau"]#, "only_y_tau", "only_big_O"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", ""E", "px", "py", "pz"]
 
 
 #features for LBN output
@@ -235,22 +243,35 @@ LBN_output_features = ["only_phi_CP_un", "only_big_O", "only_y_tau"]#, "only_y_t
 #define our LBN layer:
 myLBNLayer = LBNLayer((4, 4), 4, n_restframes=1, boost_mode=LBN.PRODUCT, features=LBN_output_features)
 
-#set the LBN weights to known values, thanks kingsley
-#weights = [np.eye(4), np.reshape(np.array([0, 1, 0, 1], dtype=np.float32), (4,1))]
-#myLBNLayer.set_weights(weights)
+# #set the LBN weights to known values, thanks kingsley
+# weights = [np.eye(4), np.reshape(np.array([0, 1, 0, 1], dtype=np.float32), (4,1))]
+# myLBNLayer.set_weights(weights)
 
 
 #define NN model and compile, now merging 2 3 and all the way to output
 model = tf.keras.models.Sequential([
     #define the layer, thanks Kingsley
-    #myLBNLayer,
-    LBNLayer((4, 4), 4, n_restframes = 1, boost_mode = LBN.PRODUCT, features = LBN_output_features),
-    tf.keras.layers.Dense(node_nb, activation = 'relu'),
-    tf.keras.layers.Dense(node_nb, activation = 'relu'),
+    myLBNLayer,
+    #LBNLayer((4, 4), 4, n_restframes = 1, boost_mode = LBN.PRODUCT, features = LBN_output_features),
     #tf.keras.layers.Dense(node_nb, activation = 'relu'),
-    tf.keras.layers.Dense(1),
+    #tf.keras.layers.Dense(node_nb, activation = 'relu'),
+    #tf.keras.layers.Dense(node_nb, activation = 'relu'),
+    #tf.keras.layers.Dense(1),
     #tf.keras.layers.Reshape((4, 4))
 ])
+
+
+loss_fn = tf.keras.losses.MeanSquaredError() #common to the 4 iterations
+model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
+
+#train model LBN
+history = model.fit(x, y_1, validation_split = 0.3, epochs = 25)
+
+model.add(tf.keras.layers.Dense(node_nb, activation = 'relu'))
+model.add(tf.keras.layers.Dense(node_nb, activation = 'relu'))
+model.add(tf.keras.layers.Dense(1))
+model.layers[0].trainable = False
+model.summary()
 
 #Next run it
 loss_fn = tf.keras.losses.MeanSquaredError() #common to the 4 iterations
@@ -258,10 +279,10 @@ model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
 
 
 #train model
-history = model.fit(x, y, validation_split = 0.3, epochs = 25)
+history = model.fit(x, y, validation_split = 0.3, epochs = 50)
 
 
-need = 'gen_phitt'
+need = 'phi_cp'
 
 
 d = -3
@@ -277,7 +298,7 @@ def frac(d = -2):
 hist1 = np.array(model(x)[:, 0])
 hist2 = np.array(y[:, 0])
 
-#ax = fig.add_subplot(2,2,1)
+ax = fig.add_subplot(2,2,1)
 plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN %s component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(need, dd, frac(dd), d, frac(d)))
 plt.hist(hist2, bins = 100, alpha = 0.5, label = 'True %s - Features: %s'%(need, LBN_output_features[0]))
 plt.ylabel("Frequency", fontsize = 'x-large')
@@ -285,10 +306,7 @@ plt.xlabel("%s (epsilon = 10e-5)"%(need), fontsize = 'x-large')
 plt.grid()
 plt.legend()#prop = {'size', 10})
 
-plt.savefig('Test_42')
-
-
-raise END
+plt.savefig('Test_55')
 
 def checks(df):
     #The different *initial* 4 vectors, (E,px,py,pz)
@@ -368,7 +386,7 @@ plt.xlabel("%s PS (epsilon = 10e-5)"%(need), fontsize = 'x-large')
 plt.grid()
 plt.legend()#prop = {'size', 10})
 
-plt.savefig('Test_38')
+plt.savefig('Test_55')
 
 
 x,y = checks(df_sm)
@@ -383,7 +401,7 @@ plt.xlabel("%s SM (epsilon = 10e-5)"%(need), fontsize = 'x-large')
 plt.grid()
 plt.legend()#prop = {'size', 10})
 
-plt.savefig('Test_38')
+plt.savefig('Test_55')
 
 ax = fig.add_subplot(2,2,4)
 plt.hist(hist5, bins = 100, alpha = 0.5, label = "NN %s SM component")# : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(need, dd, frac(dd), d, frac(d)))
@@ -393,7 +411,7 @@ plt.xlabel("Comparision %s SM-PS (epsilon = 10e-5)"%(need), fontsize = 'x-large'
 plt.grid()
 plt.legend()#prop = {'size', 10})
 
-plt.savefig('Test_38')
+plt.savefig('Test_55')
 
 
 
@@ -526,6 +544,10 @@ model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
 #train model
 history = model.fit(x, y, validation_split = 0.3, epochs = 25)
 print('Model is trained.')
+
+
+for layer in model.layers[1]:
+    layer.trainable = False
 
 hist1 = np.array(model(x)[:, 0])
 hist2 = np.array(y[:, 0])

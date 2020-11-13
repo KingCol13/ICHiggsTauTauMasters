@@ -916,7 +916,11 @@ class FeatureFactory(FeatureFactoryBase):
         
         #and here back to cos, because the NN doesn't deal with cos function that well...
         
-        phi_cp = tf.where(self.only_y_tau()[...,0]<0, phi_cp, tf.where(phi_cp<pi, phi_cp+np.pi, phi_cp-pi))
+        
+        #plain version
+        #phi_cp = tf.where(self.only_y_tau()[...,0]<0, phi_cp, tf.where(phi_cp<pi, phi_cp+np.pi, phi_cp-pi))
+        
+        phi_cp = tf.where(self.only_y_tau()[...,0]<0, phi_cp, phi_cp-tf.math.sign(phi_cp-np.pi)*np.pi)
         
         return tf.expand_dims(phi_cp, -1)
    
