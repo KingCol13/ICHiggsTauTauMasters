@@ -111,15 +111,17 @@ phi_shift_2=np.where(y_tau<0, phi_shift_1, np.where(phi_shift_1<np.pi, phi_shift
 x = tf.convert_to_tensor([pi0_1_lab, pi_1_lab, pi0_2_lab, pi_2_lab], dtype=np.float32)
 x = tf.transpose(x, [2, 0, 1])
 
-#y = tf.convert_to_tensor([pi_1_ZMF, pi_2_ZMF, pi0_1_ZMF, pi0_2_ZMF], dtype=np.float32)
+#y = tf.convert_to_tensor([pi0_1_ZMF, pi_1_ZMF, pi0_2_ZMF, pi_2_ZMF], dtype=np.float32)
 #weird order from LBN
 #y = tf.transpose(y, [2, 1, 0])
 
-y = tf.transpose(tf.convert_to_tensor(phi_shift_2, dtype=np.float32))
+#y = tf.convert_to_tensor(phi_shift_0, dtype=tf.float32)
+y = tf.convert_to_tensor(phi_shift_2, dtype=tf.float32)
 
 #%% Building network
 
 #features for LBN output
+#LBN_output_features = ["only_phi_CP_un"]
 LBN_output_features = ["only_phi_CP"]
 #LBN_output_features = ["E", "px", "py", "pz"]
 
@@ -128,10 +130,9 @@ myLBNLayer = LBNLayer((4, 4), 4, n_restframes=1, boost_mode=LBN.PRODUCT, feature
 
 #set the LBN weights to known values
 weights = [np.eye(4), np.reshape(np.array([0, 1, 0, 1], dtype=np.float32), (4,1))]
-myLBNLayer.set_weights(weights)
+#myLBNLayer.set_weights(weights)
 
 model = tf.keras.models.Sequential([
-    #define the layer, thanks Kingsley
     myLBNLayer
     #tf.keras.layers.Reshape((4, 4))
 ])
@@ -142,6 +143,21 @@ model.compile(optimizer='adam',
               metrics=['mae'])
 
 print("Model compiled.")
+
+#%% Training model
+
+#train model
+history = model.fit(x, y, validation_split=0.3, epochs=5)
+
+#plot traning
+plt.figure()
+plt.plot(history.history['loss'], label="Training Loss")
+plt.plot(history.history['val_loss'], label="Validation Loss")
+plt.title("Loss on Iteration")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.legend()
+plt.show()
 
 #%% Evaluating model
 

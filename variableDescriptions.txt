@@ -1,0 +1,188 @@
+Danny's original readme.txt
+
+--------------------------------------------------------------------------
+
+Useful materials
+
+--------------------------------------------------------------------------
+
+A useful paper describing the use of DNN to increase CP-even vs CP-odd seperation for events with rho's and a1's: https://arxiv.org/pdf/1608.02609.pdf
+and these slides build on this work including also information on the MET: https://indico.cern.ch/event/546109/contributions/2348814/attachments/1394491/2125280/Epiphany-17-01-12.pdf
+
+--------------------------------------------------------------------------
+
+A few definitions
+
+--------------------------------------------------------------------------
+
+In this document a few abbreviations/acronyms are used, I will try to define these all here for convinience:
+  - The events are grouped by channel depending on whether we have 2 hadronic tau's, or a electron/muon and 1 hadronic tau
+    These channels are named tt, et, mt where "t" indicates a hadronic tau, "e" a tau->electron decay, and "m" a tau->muon decay
+  - The impact parameter named "ip"/"IP" is the point of closest approach between the primary-vertex (PV) and a track 
+  - "pi" will be used to refer to a charged pion, and "pi0" will refer to a neutral pion
+  - "gam"/"gamma" will refer to a photon from a pi0 decay (pi0->2gamma) 
+  - The missing transverse momenta due to presense of undetectable neutrinos is refered to as "MET"/"met"
+
+--------------------------------------------------------------------------
+
+Exmples 
+
+--------------------------------------------------------------------------
+
+This directory contains 2 examples to get you started:
+
+- Example 1 trains a BDT to differentiate the CP-even and CP-odd scenarios. Two BDT's are trained and compared, the first uses on the best simple variable as input, and the second includes additional variables to demonstrate that the seperation can be improved by including additional information
+
+- Example 2 trains a simple neural network to differentiate between the CP-even and CP-odd scenarios.
+
+--------------------------------------------------------------------------
+
+Explanation of input files for training 
+
+--------------------------------------------------------------------------
+
+The root files in this directory contain the ntuples needed to perform the training. 
+The files with "GluGluH" in the names contain Higgs events produced by gluon-gluon fusion. 
+The files with "VBFH" in the named contain Higgs events produced by vector-boson fusion.
+The files named *_tt_* contain events with 2 hadronic tau candidates, *_mt_* contain events with 1 tau->muon and 1 hadronic tau candidate, and *_et_* contain events with 1 tau->electron and 1 hadronic tau candidate.
+The variables included in these files will be described below:
+
+** Note: For a1 channels not all information needed is currently in ntuples, it will be added in future **
+
+Generator level variables. Not to be used in training but needed to select CP-scenarios and/or define targets for MVAs:
+
+ wt_cp_sm  - ME weight for CP-even scenario  
+ wt_cp_ps  - ME weight for CP-odd scenario
+ wt_cp_mm  - ME weight for CP-mixed (phi = 45 degrees) scenario
+ tauFlag_1 - an integer indicating the true decay-mode of the leading hadronic tau (tt only) [0=pi, 1=rho, 2=a1(->pi+2pi0), 10=a1(->3pi), 11=3pi+pi0, -1=others]
+ tauFlag_2 - an integer indicating the true decay-mode of the sub-leading hadronic tua (tt), or of the hadronic tau (et and mt) [0=pi, 1=rho, 2=a1(->pi+2pi0), 10=a1(->3pi), 11=3pi+pi0, -1=others]
+ gen_phitt - defined as the "most likly CP-mixing angle). Defined as angle that maximises: cos(phi)^2*wt_cp_sm + sin(phi)^2*wt_cp_ps + 2*cos(phi)*sin(phi)*(wt_cp_mm-wt_cp_sm/2-wt_cp_ps/2)
+ rand      - a random number unique to each event (not really a gen-level quantity but should not be used in training)
+
+Variables used for applying baseline selection. Could in principle be used in the training but we don't expect them to differentiate between CP-states so best not to use them: 
+
+ iso_1                   - isolation of the electron/muon (et and mt only) 
+ mva_dm_1                - MVA decay-mode of the leading hadronic tau (tt only)
+ mva_dm_2                - MVA decay-mode of the subleading tau (tt), or of the hadronic tau (et and mt)
+ tau_decay_mode_2        - HPS decay-mode of the leading hadronic tau (tt only)
+ tau_decay_mode_1        - HPS decay-mode of the subleading tau (tt), or of the hadronic tau (et and mt)
+ trg_singleelectron      - single electron trigger decision (et only)
+ trg_singlemuon          - single muon trigger decision (mt only)
+ trg_doubletau           - double tau trigger decision (tt only)
+ deepTauVsJets_medium_1  - Deep tau vs jets medium WP decision for the leading tau (tt only)
+ deepTauVsJets_medium_2  - Deep tau vs jets medium WP decision for the sub-leading tau (tt only), or of the tau (et and mt)
+ deepTauVsEle_vvloose_1  - Deep tau vs electron vvloose WP decision for the leading tau (tt only)
+ deepTauVsEle_vvloose_2  - Deep tau vs electron vvloose WP decision for the sub-leading tau (tt only), or of the tau (et and mt)
+ deepTauVsEle_tight_1    - Deep tau vs electron tight WP decision for the leading tau (tt only)
+ deepTauVsEle_tight_2    - Deep tau vs electron tight WP decision for the sub-leading tau (tt only), or of the tau (et and mt)
+ deepTauVsMu_vloose_1    - Deep tau vs muon vloose WP decision for the leading tau (tt only)
+ deepTauVsMu_vloose_2    - Deep tau vs muon vloose WP decision for the sub-leading tau (tt only), or of the tau (et and mt)
+ deepTauVsMu_tight_1     - Deep tau vs muon tight WP decision for the leading tau (tt only)
+ deepTauVsMu_tight_2     - Deep tau vs electron tight WP decision for the sub-leading tau (tt only), or of the tau (et and mt)
+
+Variables to be used in the training:
+
+ aco_angle_1             - for rho-rho, a1-rho, and a1-a1 channels this is the acoplanarity angle between rho decay planes (for a1 use rho from a1->rho+pi cascade)
+ aco_angle_5             - for l+rho, pi+rho, l+a1, pi+a1, and rho+rho channels this is the acoplanarity angle between rho decay plane and l/pi IP (for a1 use rho from a1->rho+pi cascade), for rho+rho channel the pi comes from leading tau and rho is from sub-leading 
+ aco_angle_6             - for l+pi, pi+pi, l+rho, pi+rho, and rho+rho channels this is the acoplanarity angle between the two l/pi IPs
+ aco_angle_7             - for rho+rho this is the acoplanarity angle between rho decay plane and pi IP. The pi comes from sub-leading tau and rho is from leading
+ y_1_1                   - The value of (Epi - Epi0)/(Epi + Epi0) for the leading hadronic tau (tt only)    
+ y_1_2                   - The value of (Epi - Epi0)/(Epi + Epi0) for the sub-leading hadronic tau (tt), or of the hadronic tau (et and mt)
+ pt_1                    - pT of the muon/electron (et and mt), pT of the leading hadronic tau (tt)
+ pt_2                    - pT of the hadronic tau (et and mt), pT of the sub-leading hadronic tau (tt)
+ pi_px_1                 - pi_p{x,y,z}_1 are the x,y,z components of the pi from the leading hadronic tau (tt) or electron/muon (et and mt) 4-momenta
+ pi_py_1  
+ pi_pz_1  
+ pi_E_1                  - Energy of the pi from the leading hadronic tau (tt) or electron/muon (et and mt) 
+ pi_px_2                 - pi_p{x,y,z}_2 are the x,y,z components of the pi from the sub-leading hadronic tau (tt) or the pi from the hadronic tau (et and mt) 4-momenta
+ pi_py_2  
+ pi_pz_2  
+ pi_E_2                  - Energy of the the pi from the sub-leading hadronic tau (tt) or the pi from the hadronic tau (et and mt)
+ pi0_px_1                - pi0_pi{x,y,z}_1 are the x,y,z components of the pi0 from the leading hadronic tau (tt only) 
+ pi0_py_1 
+ pi0_pz_1 
+ pi0_E_1                 - Energy of the pi0 from the leading hadronic tau (tt only)
+ pi0_px_2                - pi0_p{x,y,z}_2 are the x,y,z components of the pi0 from the sub-leading hadronic tau (tt) or the pi0 from the hadronic tau (et and mt) 4-momenta
+ pi0_py_2 
+ pi0_pz_2   
+ pi0_E_2                 - Energy of the the pi0 from the sub-leading hadronic tau (tt) or the pi0 from the hadronic tau (et and mt)
+ gam1_px_1               - The 4 momenta of the photons that are the constituents of the pi0 candidates are also stored for the 4 leading gammas (gam{1,2,3,4}) the x,y,z components are stored 
+ gam1_py_1                 the x,y,z components are stored as *_p{x,y,z}_* and the energy is stored as *_E_*. 
+ gam1_pz_1                 The branches named *_1 correspond to the leading hadronic tau (tt only), and those named *_2 correspond to the sub-leading hadronic tau (tt) or the hadronic tau (et and mt)
+ gam1_E_1 
+ gam1_px_2
+ gam1_py_2
+ gam1_pz_2
+ gam1_E_2 
+ gam2_px_1
+ gam2_py_1
+ gam2_pz_1
+ gam2_E_1 
+ gam2_px_2
+ gam2_py_2
+ gam2_pz_2
+ gam2_E_2 
+ gam3_px_1
+ gam3_py_1
+ gam3_pz_1
+ gam3_E_1 
+ gam3_px_2
+ gam3_py_2
+ gam3_pz_2
+ gam3_E_2 
+ gam4_px_1
+ gam4_py_1
+ gam4_pz_1
+ gam4_E_1 
+ gam4_px_2
+ gam4_py_2
+ gam4_pz_2
+ gam4_E_2
+ met        - the missing transverse momenta (MET)
+ metx       - met{x,y} are the x and y components of the MET
+ mety    
+ metCov00   - metCovij are the elements of the MET covariance matrix
+ metCov01
+ metCov10
+ metCov11 
+ ip_x_1      - ip_{x,y,z}_1 are the x,y,z components of the impact parameter vector for the muon/electron (et and mt) or the leading hadronic tau (tt) 
+ ip_y_1   
+ ip_z_1   
+ ip_x_2      - ip_{x,y,z}_2 are the x,y,z components of the impact parameter vector for the hadronic tau (et and mt) or the sub-leading hadronic tau (tt) 
+ ip_y_2   
+ ip_z_2   
+ ipcov00_1   - ipcovij_1 are the elements of the impact parameter covariance matrix for the muon/electron (et and mt) or the leading hadronic tau (tt)
+ ipcov01_1
+ ipcov02_1
+ ipcov10_1
+ ipcov11_1
+ ipcov12_1
+ ipcov20_1
+ ipcov21_1
+ ipcov22_1
+ ipcov00_2   - ipcovij_1 are the elements of the impact parameter covariance matrix for the hadronic (et and mt) or the sub-leading hadronic tau (tt)
+ ipcov01_2
+ ipcov02_2
+ ipcov10_2
+ ipcov11_2
+ ipcov12_2
+ ipcov20_2
+ ipcov21_2
+ ipcov22_2
+ ip_sig_1    - The IP significance (length/uncertainty) for the muon/electron (et and mt) or the leading hadronic tau (tt) 
+ ip_sig_2    - The IP significance (length/uncertainty) for the hadronic tau (et and mt) or the sub-leading hadronic tau (tt)
+ 
+--------------------------------------------------------------------------
+ 
+Selecting different tau decay modes
+ 
+--------------------------------------------------------------------------
+ 
+The different tau decay-modes are selected using the mva_dm_{1,2} and tau_decay_mode_{1,2} variables
+The variables ending with *_1 correspond to the leading hadrnoic tau (tt channel only), and those ending with *_2 correspond to the sub-leading hadronic tau (tt) or the hadronic tau (et and mt).
+The following selections are used to select pi, rho, a1:
+
+  pi:  mva_dm_{1,2}==0
+  rho: mva_dm_{1,2}==1 && tau_decay_mode_{1,2}==1
+  a1(->1pi+2pi0): mva_dm_{1,2}==2 && tau_decay_mode_{1,2}==1 
+  a1(->3pi):  mva_dm_{1,2}==10
