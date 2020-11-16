@@ -52,7 +52,7 @@ other_features = [ "ip_x_1", "ip_y_1", "ip_z_1",        #leading impact paramete
                    "gen_phitt"
                  ]    # ratios of energies
 
-target = [    "aco_angle_1"]  #acoplanarity angle
+target = [    "aco_angle_1", "aco_angle_6"]  #acoplanarity angle
     
 selectors = [ "tau_decay_mode_1","tau_decay_mode_2",
              "mva_dm_1","mva_dm_2","rand","wt_cp_ps","wt_cp_sm",
@@ -180,8 +180,6 @@ phi_CP_2 = np.where(y_T<=0, phi_CP+np.pi, phi_CP-np.pi)
 #additionnal shift that needs to be done do see differences between odd and even scenarios, with y=Energy ratios
 phi_CP = np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_CP)
 
-
-
 ################################# Here include aco_angle next ##############################
 
 
@@ -203,7 +201,7 @@ node_nb = 30 #64#48#32#64
 target_1 = [phi_CP_1, y_T]
 y_1 = tf.transpose(tf.convert_to_tensor(target_1, dtype = np.float32))
 
-target = [phi_CP]#phi_CP_1, y_T] #df4[["aco_angle_1"]]#[phi_CP]#df4[["aco_angle_1"]]#[]#, bigO, y_T]
+target = [df4["aco_angle_1"]]#phi_CP_1, y_T] #df4[["aco_angle_1"]]#[phi_CP]#df4[["aco_angle_1"]]#[]#, bigO, y_T]
 y = tf.transpose(tf.convert_to_tensor(target, dtype=np.float32)) # tf.transpose(
 
 
@@ -265,7 +263,12 @@ loss_fn = tf.keras.losses.MeanSquaredError() #common to the 4 iterations
 model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
 
 #train model LBN
-history = model.fit(x, y_1, validation_split = 0.3, epochs = 25)
+#history = model.fit(x, y_1, validation_split = 0.3, epochs = 25)
+
+
+#re-use the weights for before  
+model.load_weights("model_aco_1")
+
 
 model.add(tf.keras.layers.Dense(node_nb, activation = 'relu'))
 model.add(tf.keras.layers.Dense(node_nb, activation = 'relu'))
@@ -273,13 +276,18 @@ model.add(tf.keras.layers.Dense(1))
 model.layers[0].trainable = False
 model.summary()
 
+
 #Next run it
 loss_fn = tf.keras.losses.MeanSquaredError() #common to the 4 iterations
 model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
 
 
 #train model
-history = model.fit(x, y, validation_split = 0.3, epochs = 50)
+#history = model.fit(x, y, validation_split = 0.3, epochs = 25)
+
+model.load_weights("model_aco_1_phase2")
+
+
 
 
 need = 'phi_cp'
@@ -306,7 +314,7 @@ plt.xlabel("%s (epsilon = 10e-5)"%(need), fontsize = 'x-large')
 plt.grid()
 plt.legend()#prop = {'size', 10})
 
-plt.savefig('Test_55')
+plt.savefig('Test_56')
 
 def checks(df):
     #The different *initial* 4 vectors, (E,px,py,pz)
@@ -386,7 +394,7 @@ plt.xlabel("%s PS (epsilon = 10e-5)"%(need), fontsize = 'x-large')
 plt.grid()
 plt.legend()#prop = {'size', 10})
 
-plt.savefig('Test_55')
+plt.savefig('Test_56')
 
 
 x,y = checks(df_sm)
@@ -401,7 +409,7 @@ plt.xlabel("%s SM (epsilon = 10e-5)"%(need), fontsize = 'x-large')
 plt.grid()
 plt.legend()#prop = {'size', 10})
 
-plt.savefig('Test_55')
+plt.savefig('Test_56')
 
 ax = fig.add_subplot(2,2,4)
 plt.hist(hist5, bins = 100, alpha = 0.5, label = "NN %s SM component")# : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(need, dd, frac(dd), d, frac(d)))
@@ -411,7 +419,7 @@ plt.xlabel("Comparision %s SM-PS (epsilon = 10e-5)"%(need), fontsize = 'x-large'
 plt.grid()
 plt.legend()#prop = {'size', 10})
 
-plt.savefig('Test_55')
+plt.savefig('Test_56')
 
 
 
