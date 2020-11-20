@@ -4,4 +4,4 @@
 .ipynb_checkpoints
 .tempfile
 *__pycache__*
-.root
+*.root
