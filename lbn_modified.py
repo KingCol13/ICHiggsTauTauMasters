@@ -890,7 +890,7 @@ class FeatureFactory(FeatureFactoryBase):
         tf_y_1 = (self.pi_1_star()[...,0] - self.pi0_1_star()[...,0])/(self.pi_1_star()[...,0] + self.pi0_1_star()[...,0])
         tf_y_2 = (self.pi_2_star()[...,0] - self.pi0_2_star()[...,0])/(self.pi_2_star()[...,0] + self.pi0_2_star()[...,0])
         
-        tf_y_tau = tf.math.multiply(tf_y_1,tf_y_2)
+        tf_y_tau = tf_y_1*tf_y_2 #tf.math.multiply(tf_y_1,tf_y_2)
         return tf.expand_dims(tf_y_tau, -1)
     
     

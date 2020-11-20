@@ -8,6 +8,9 @@
 #This file is for experimenting with the LBN aim for today: Make this work and have an algorithm that can include both an LBN *trained* layer and also another layer trained on cross products.
 
 
+#transforming this algorithm to checkout the aco_angles
+
+
 import sys
 sys.path.append("/eos/home-m/acraplet/.local/lib/python2.7/site-packages")
 import uproot 
@@ -52,7 +55,7 @@ other_features = [ "ip_x_1", "ip_y_1", "ip_z_1",        #leading impact paramete
                    "gen_phitt"
                  ]    # ratios of energies
 
-target = [    "aco_angle_1", "aco_angle_6"]  #acoplanarity angle
+target = [    "aco_angle_1", "aco_angle_6", "aco_angle_5"]  #acoplanarity angle
     
 selectors = [ "tau_decay_mode_1","tau_decay_mode_2",
              "mva_dm_1","mva_dm_2","rand","wt_cp_ps","wt_cp_sm",
@@ -82,6 +85,16 @@ df_sm = df4[
 print("panda Data frame created \n")
 
 df4.head()
+
+
+# plt.plot(df4['aco_angle_1'][:500], df4['aco_angle_6'][:500], 'bx')
+# #plt.plot(df4['aco_angle_6'][:100], df4['gen_phitt'][:100], 'rx')
+# #plt.plot(df4['aco_angle_5'][:100], df4['gen_phitt'][:100], 'gx')
+# plt.ylabel('Gen_phitt')
+# plt.xlabel('aco_angle_{1,5,6}')
+# plt.savefig('Angles_1')
+
+# raise end
 
 
 #########################Some geometrical functions#####################################
@@ -186,11 +199,12 @@ phi_CP = np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), ph
 #inputs=[phi_CP_unshifted, bigO, y_T]
 
 #This is the correct ordering
-#inputs = [pi0_1_4Mom, pi_1_4Mom, pi0_2_4Mom, pi_2_4Mom]
-inputs = [bigO, phi_CP_unshifted, phi_CP, y_T, 
-          pi0_1_3Mom_star_perp[0], pi0_1_3Mom_star_perp[1], pi0_1_3Mom_star_perp[2],
-          pi0_2_3Mom_star_perp[0], pi0_2_3Mom_star_perp[1], pi0_2_3Mom_star_perp[2]
-         ]
+inputs = [pi0_1_4Mom, pi_1_4Mom, pi0_2_4Mom, pi_2_4Mom]
+#inputs = [df4["aco_angle_1"], df4["aco_angle_6"], df4["aco_angle_5"]] 
+#[bigO, phi_CP_unshifted, phi_CP, y_T, 
+          #pi0_1_3Mom_star_perp[0], pi0_1_3Mom_star_perp[1], pi0_1_3Mom_star_perp[2],
+          #pi0_2_3Mom_star_perp[0], pi0_2_3Mom_star_perp[1], pi0_2_3Mom_star_perp[2]
+         #]
 
 
 
@@ -208,7 +222,7 @@ node_nb = 30 #64#48#32#64
 target_1 = [phi_CP_1, y_T]
 y_1 = tf.transpose(tf.convert_to_tensor(target_1, dtype = np.float32))
 
-target = [df4["gen_phitt"]]#*2*np.pi/360]#phi_CP_1, y_T] #df4[["aco_angle_1"]]#[phi_CP]#df4[["aco_angle_1"]]#[]#, bigO, y_T]
+target = [df4["aco_angle_6"]]#*2*np.pi/360]#phi_CP_1, y_T] #df4[["aco_angle_1"]]#[phi_CP]#df4[["aco_angle_1"]]#[]#, bigO, y_T]
 y = tf.transpose(tf.convert_to_tensor(target, dtype=np.float32)) # tf.transpose(
 
 
@@ -259,7 +273,7 @@ model = tf.keras.models.Sequential([
     #myLBNLayer,
     #LBNLayer((4, 4), 4, n_restframes = 1, boost_mode = LBN.PRODUCT, features = LBN_output_features),
     tf.keras.layers.Dense(node_nb, activation = 'relu', input_shape = (x.shape)),
-    tf.keras.layers.Dense(node_nb, activation = 'sigmoid'),
+    #tf.keras.layers.Dense(node_nb, activation = 'sigmoid'),
     tf.keras.layers.Dense(node_nb, activation = 'relu'),
     tf.keras.layers.Dense(1),
     #tf.keras.layers.Reshape((4, 4))
@@ -298,7 +312,7 @@ history = model.fit(x, y, validation_split = 0.3, epochs = 25)
 
 
 need = 'gen_phitt'
-figure_nb = 67
+figure_nb = 2
 
 
 d = -3

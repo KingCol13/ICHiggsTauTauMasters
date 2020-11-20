@@ -52,7 +52,7 @@ other_features = [ "ip_x_1", "ip_y_1", "ip_z_1",        #leading impact paramete
                    "gen_phitt"
                  ]    # ratios of energies
 
-target = [    "aco_angle_1", "aco_angle_6"]  #acoplanarity angle
+target = [ "aco_angle_1", "aco_angle_6", "aco_angle_5", "aco_angle_7"]  #acoplanarity angle
     
 selectors = [ "tau_decay_mode_1","tau_decay_mode_2",
              "mva_dm_1","mva_dm_2","rand","wt_cp_ps","wt_cp_sm",
@@ -109,159 +109,123 @@ def norm(vector):
         print('This is only for a 3d vector')
     return np.sqrt(vector[0]**2+vector[1]**2+vector[2]**2)
 
+class Calculation:
+    def __init__(self, df):
+        #this is the function doing all the calculations manually just takes as input the dataframe
+        #The different *initial* 4 vectors, (E,px,py,pz)
+        self.pi_1 = np.array([df["pi_E_1"],df["pi_px_1"],df["pi_py_1"],df["pi_pz_1"]])
+        self.pi_2 = np.array([df["pi_E_2"],df["pi_px_2"],df["pi_py_2"],df["pi_pz_2"]])
+
+        self.pi0_1 = np.array([df["pi0_E_1"],df["pi0_px_1"],df["pi0_py_1"],df["pi0_pz_1"]])
+        self.pi0_2 = np.array([df["pi0_E_2"],df["pi0_px_2"],df["pi0_py_2"],df["pi0_pz_2"]])
+
+        #Charged and neutral pion momenta
+        self.pi_1_4Mom = Momentum4(df["pi_E_1"],df["pi_px_1"],df["pi_py_1"],df["pi_pz_1"])
+        self.pi_2_4Mom = Momentum4(df["pi_E_2"],df["pi_px_2"],df["pi_py_2"],df["pi_pz_2"])
+
+        #Same for the pi0
+        self.pi0_1_4Mom = Momentum4(df["pi0_E_1"],df["pi0_px_1"],df["pi0_py_1"],df["pi0_pz_1"])
+        self.pi0_2_4Mom = Momentum4(df["pi0_E_2"],df["pi0_px_2"],df["pi0_py_2"],df["pi0_pz_2"])
+
+        self.impact_param_1 = Momentum4(np.zeros(len(df["ip_x_1"])),df["ip_x_1"],df["ip_y_1"],df["ip_z_1"])
+        self.impact_param_2 = Momentum4(np.zeros(len(df["ip_x_2"])),df["ip_x_2"],df["ip_y_2"],df["ip_z_2"])
+
+        #check: do the same thing but re-naming 
+        #self.pi0_1_4Mom = self.impact_param_1
+        #self.pi0_2_4Mom = self.impact_param_2
+
+        #This is the COM frame of the two charged pions w.r.t. which we'll boost
+        self.ref_COM_4Mom = Momentum4(self.pi_1_4Mom+self.pi_2_4Mom)
+        boost = Momentum4(self.ref_COM_4Mom[0], -self.ref_COM_4Mom[1], -self.ref_COM_4Mom[2], -self.ref_COM_4Mom[3])
+
+        #energies=[df4["pi_E_1"],df4["pi_E_2"],df4["pi0_E_1"],df4["pi0_E_2"]]
+
+        #Lorentz boost everything in the ZMF of the two charged pions
+        self.pi0_1_4Mom_star = self.pi0_1_4Mom.boost_particle(boost)
+        self.pi0_2_4Mom_star = self.pi0_2_4Mom.boost_particle(boost)
+
+        #Lorentz boost everything in the ZMF of the two neutral pions
+        self.pi_1_4Mom_star = self.pi_1_4Mom.boost_particle(boost)
+        self.pi_2_4Mom_star = self.pi_2_4Mom.boost_particle(boost)
 
 
-############### ALL Hand-calculated parameters #################
+        #calculating the perpependicular component
+        pi0_1_3Mom_star_perp=cross_product(self.pi0_1_4Mom_star[1:], self.pi_1_4Mom_star[1:])
+        pi0_2_3Mom_star_perp=cross_product(self.pi0_2_4Mom_star[1:], self.pi_2_4Mom_star[1:])
 
-#The different *initial* 4 vectors, (E,px,py,pz)
-pi_1=np.array([df4["pi_E_1"],df4["pi_px_1"],df4["pi_py_1"],df4["pi_pz_1"]])
-pi_2=np.array([df4["pi_E_2"],df4["pi_px_2"],df4["pi_py_2"],df4["pi_pz_2"]])
+        #Now normalise:
+        pi0_1_3Mom_star_perp=pi0_1_3Mom_star_perp/norm(pi0_1_3Mom_star_perp)
+        pi0_2_3Mom_star_perp=pi0_2_3Mom_star_perp/norm(pi0_2_3Mom_star_perp)
 
-pi0_1=np.array([df4["pi0_E_1"],df4["pi0_px_1"],df4["pi0_py_1"],df4["pi0_pz_1"]])
-pi0_2=np.array([df4["pi0_E_2"],df4["pi0_px_2"],df4["pi0_py_2"],df4["pi0_pz_2"]])
+        self.pi0_1_4Mom_star_perp = [self.pi0_1_4Mom_star[0], pi0_1_3Mom_star_perp[0], 
+                                     pi0_1_3Mom_star_perp[1], pi0_1_3Mom_star_perp[2]]
 
-#Charged and neutral pion momenta
-pi_1_4Mom=Momentum4(df4["pi_E_1"],df4["pi_px_1"],df4["pi_py_1"],df4["pi_pz_1"])
-pi_2_4Mom=Momentum4(df4["pi_E_2"],df4["pi_px_2"],df4["pi_py_2"],df4["pi_pz_2"])
+        self.pi0_2_4Mom_star_perp = [self.pi0_1_4Mom_star[0], pi0_2_3Mom_star_perp[0], 
+                                     pi0_2_3Mom_star_perp[1], pi0_2_3Mom_star_perp[2]]
 
-#Same for the pi0
-pi0_1_4Mom=Momentum4(df4["pi0_E_1"],df4["pi0_px_1"],df4["pi0_py_1"],df4["pi0_pz_1"])
-pi0_2_4Mom=Momentum4(df4["pi0_E_2"],df4["pi0_px_2"],df4["pi0_py_2"],df4["pi0_pz_2"])
+        #Calculating phi_star
+        self.phi_CP_unshifted=np.arccos(dot_product(pi0_1_3Mom_star_perp,pi0_2_3Mom_star_perp))
 
+        self.phi_CP = self.phi_CP_unshifted
 
-impact_param_1 = Momentum4(np.zeros(len(df4["ip_x_1"])),df4["ip_x_1"],df4["ip_y_1"],df4["ip_z_1"])
-impact_param_2 = Momentum4(np.zeros(len(df4["ip_x_2"])),df4["ip_x_2"],df4["ip_y_2"],df4["ip_z_2"])
+        #The energy ratios
+        self.y_T = np.array(df['y_1_1']*df['y_1_2'])
 
-#check: do the same thing but re-naming 
-#pi0_1_4Mom = impact_param_1
-#pi0_2_4Mom = impact_param_2
+        #The O variable
+        cross = np.array(np.cross(pi0_1_3Mom_star_perp.transpose(),pi0_2_3Mom_star_perp.transpose()).transpose())
+        self.bigO = dot_product(self.pi_2_4Mom_star[1:],cross)
 
-#This is the COM frame of the two charged pions w.r.t. which we'll boost
-ref_COM_4Mom=Momentum4(pi_1_4Mom+pi_2_4Mom)
-boost = Momentum4(ref_COM_4Mom[0], -ref_COM_4Mom[1], -ref_COM_4Mom[2], -ref_COM_4Mom[3])
+        #perform the shift w.r.t. O* sign
+        self.phi_CP_1 = np.where(self.bigO>0, self.phi_CP_unshifted, 2*np.pi-self.phi_CP_unshifted)
 
-#energies=[df4["pi_E_1"],df4["pi_E_2"],df4["pi0_E_1"],df4["pi0_E_2"]]
+        self.phi_CP_2 = np.where(self.y_T<=0, self.phi_CP+np.pi, self.phi_CP-np.pi)
 
-#Lorentz boost everything in the ZMF of the two charged pions
-pi0_1_4Mom_star=pi0_1_4Mom.boost_particle(boost)
-pi0_2_4Mom_star=pi0_2_4Mom.boost_particle(boost)
+        #additionnal shift that needs to be done do see differences between odd and even scenarios, with y=Energy ratios
+        self.phi_CP = np.where(self.y_T>=0, np.where(self.phi_CP<np.pi, self.phi_CP+np.pi, self.phi_CP-np.pi), self.phi_CP)
+        
+        self.df = df
+    
+    def checks(self):
 
-#Lorentz boost everything in the ZMF of the two neutral pions
-pi_1_4Mom_star=pi_1_4Mom.boost_particle(boost)
-pi_2_4Mom_star=pi_2_4Mom.boost_particle(boost)
+        target = [self.df["aco_angle_7"]]#self.df["aco_angle_7"]]
+        y = tf.transpose(tf.convert_to_tensor(target, dtype=np.float32))
 
+        inputs = [self.impact_param_1, self.pi_1_4Mom, self.pi0_2_4Mom, self.pi_2_4Mom]
+        x = tf.convert_to_tensor(inputs, dtype=np.float32)
+        x = tf.transpose(x, [2, 0, 1])
 
-#calculating the perpependicular component
-pi0_1_3Mom_star_perp=cross_product(pi0_1_4Mom_star[1:],pi_1_4Mom_star[1:])
-pi0_2_3Mom_star_perp=cross_product(pi0_2_4Mom_star[1:],pi_2_4Mom_star[1:])
-
-#Now normalise:
-pi0_1_3Mom_star_perp=pi0_1_3Mom_star_perp/norm(pi0_1_3Mom_star_perp)
-pi0_2_3Mom_star_perp=pi0_2_3Mom_star_perp/norm(pi0_2_3Mom_star_perp)
-
-pi0_1_4Mom_star_perp = [pi0_1_4Mom_star[0], pi0_1_3Mom_star_perp[0], pi0_1_3Mom_star_perp[1], pi0_1_3Mom_star_perp[2]]
-pi0_2_4Mom_star_perp = [pi0_1_4Mom_star[0], pi0_2_3Mom_star_perp[0], pi0_2_3Mom_star_perp[1], pi0_2_3Mom_star_perp[2]]
-
-#Calculating phi_star
-phi_CP_unshifted=np.arccos(dot_product(pi0_1_3Mom_star_perp,pi0_2_3Mom_star_perp))
-
-phi_CP = phi_CP_unshifted
-
-#The energy ratios
-y_T = np.array(df4['y_1_1']*df4['y_1_2'])
-
-tf_y_1 = (pi_1_4Mom_star[0] - pi0_1_4Mom_star[0])/(pi_1_4Mom_star[0] + pi0_1_4Mom_star[0])
-tf_y_2 = (pi_2_4Mom_star[0] - pi0_2_4Mom_star[0])/(pi_2_4Mom_star[0] + pi0_2_4Mom_star[0])
-y_T = tf_y_1*tf_y_2
-
-#The O variable
-cross=np.array(np.cross(pi0_1_3Mom_star_perp.transpose(),pi0_2_3Mom_star_perp.transpose()).transpose())
-bigO=dot_product(pi_2_4Mom_star[1:],cross)
-
-#perform the shift w.r.t. O* sign
-
-
-phi_CP_1 = np.where(bigO>0, phi_CP_unshifted, 2*np.pi-phi_CP_unshifted)
-
-phi_CP = phi_CP_1
-
-print('len phi', len(phi_CP))
-
-phi_CP_2 = np.where(y_T<=0, phi_CP+np.pi, phi_CP-np.pi)
-
-#additionnal shift that needs to be done do see differences between odd and even scenarios, with y=Energy ratios
-phi_CP = np.where(y_T>=0, np.where(phi_CP<np.pi, phi_CP+np.pi, phi_CP-np.pi), phi_CP)
-
-
+        return x,y
 
 ################################# Here include aco_angle next ##############################
 
-
-#inputs=[phi_CP_unshifted, bigO, y_T]
-
-#This is the correct ordering
-inputs = [pi0_1_4Mom, pi_1_4Mom, pi0_2_4Mom, pi_2_4Mom]
-
-
-
-
-x = tf.convert_to_tensor(inputs, dtype=np.float32)
-x = tf.transpose(x, [2, 0, 1])  #this is the correct transposition ?
-# x = np.array(inputs,dtype=np.float32).transpose()
-
-
+target = Calculation(df4)
+x,y = target.checks()
 node_nb = 30 #64#48#32#64
+need = 'aco_angle_7'
+figure_nb = 9
 
-#The target
-#target = df4[["aco_angle_1"]]
-#target = [pi_1_4Mom_star, pi_2_4Mom_star, pi0_1_4Mom_star, pi0_2_4Mom_star]
+print(target.y_T[:10], 'y_tau')
+print(target.bigO[:10], 'big_O')
 
-target_1 = [phi_CP, y_T, bigO, phi_CP_1, phi_CP_unshifted]
+target_1 = [target.phi_CP, target.y_T, target.bigO, target.phi_CP_1, target.phi_CP_unshifted]
 y_1 = tf.transpose(tf.convert_to_tensor(target_1, dtype = np.float32))
 
-target = [df4["aco_angle_6"]]#*2*np.pi/360]#phi_CP_1, y_T] #df4[["aco_angle_1"]]#[phi_CP]#df4[["aco_angle_1"]]#[]#, bigO, y_T]
-y = tf.transpose(tf.convert_to_tensor(target, dtype=np.float32)) # tf.transpose(
-
-
-
-#tf.transpose(tf.convert_to_tensor(target, dtype=np.float32))
-#y = tf.transpose(y, [2, 0, 1])  #this is the correct transposition ?
-#y = np.array(target,dtype=np.float32).transpose() #this is the target
-
-
-# plt.plot(np.cos(phi_CP_unshifted[:100]), 'rx')
-# plt.plot(phi_CP_unshifted[:100], 'bx')
-# plt.savefig('delete.png')
-# raise end
-
-print("\n the std of y", tf.math.reduce_std(y))
-print("\n the std of x", tf.math.reduce_std(x))
-
-
-#Now we will try and use lbn to get aco_angle_1 from the 'raw data'
-# start a sequential model
 model = tf.keras.models.Sequential()
 
 
-
-fig = plt.figure(figsize=(10,10), frameon = False)
+fig = plt.figure('4_fig', figsize=(10,10), frameon = False)
 plt.title("Neural Network Performance for phi_CP \n[PRODUCT pre_trained, 30r, 30r, MeanSquareError] (25 and 50 epochs)", fontsize = 'xx-large')
 plt.axis('off')
 
 #all the output we want  in some boosted frame
-LBN_output_features = ["only_phi_CP_1", "only_y_tau", "only_big_O", "only_phi_CP_un", "only_phi_CP"]#, "only_big_O", "only_y_tau"]#, "only_y_tau", "only_big_O"]#, "y_tau", "big_O"]#, "pi0_1_star", "pi_1_star", "pi0_2_star", "pi0_1_star"], "lambda_1_perp", "lambda_2_perp", ""E", "px", "py", "pz"]
-
-
-#features for LBN output
-#LBN_output_features = ["only_phi_CP"]
-#LBN_output_features = ["E", "px", "py", "pz"]
+LBN_output_features = ["only_phi_CP_1", "only_y_tau"]#"only_phi_CP_1"]#, "only_y_tau"]
 
 #define our LBN layer:
 myLBNLayer = LBNLayer((4, 4), 4, n_restframes=1, boost_mode=LBN.PRODUCT, features=LBN_output_features)
 
-# #set the LBN weights to known values, thanks kingsley
-# weights = [np.eye(4), np.reshape(np.array([0, 1, 0, 1], dtype=np.float32), (4,1))]
-# myLBNLayer.set_weights(weights)
+#set the LBN weights to known values, thanks kingsley
+weights = [np.eye(4), np.reshape(np.array([0, 1, 0, 1], dtype=np.float32), (4,1))]
+myLBNLayer.set_weights(weights)
 
 
 #define NN model and compile, now merging 2 3 and all the way to output
@@ -277,47 +241,44 @@ model = tf.keras.models.Sequential([
 ])
 
 
-loss_fn = tf.keras.losses.MeanSquaredError() #common to the 4 iterations
-model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
-
-#train model LBN
-history = model.fit(x, y_1, validation_split = 0.3, epochs = 25)
-
-
-# #re-use the weights for before  
-# #model.load_weights("model_aco_1")
-
-
-# model.add(tf.keras.layers.Dense(node_nb, activation = 'relu'))
-# model.add(tf.keras.layers.Dense(node_nb, activation = 'relu'))
-# model.add(tf.keras.layers.Dense(1))
-# model.layers[0].trainable = False
-# model.summary()
-
-
-# #Next run it
 # loss_fn = tf.keras.losses.MeanSquaredError() #common to the 4 iterations
 # model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
 
-
-# #train model
-# history = model.fit(x, y, validation_split = 0.3, epochs = 25)
-
-#model.load_weights("model_aco_1_phase2")
+# #train model LBN
+# #history = model.fit(x, y_1, validation_split = 0.3, epochs = 25)
 
 
+# #re-use the weights for before  
+#model.load_weights("model_aco_1")
 
 
-need = 'all, phi_CP'
-figure_nb = 72
+model.add(tf.keras.layers.Dense(node_nb, activation = 'relu'))
+model.add(tf.keras.layers.Dense(node_nb, activation = 'relu'))
+model.add(tf.keras.layers.Dense(1))
+#model.layers[0].trainable = False
+# model.summary()
+
+
+# # #Next run it
+loss_fn = tf.keras.losses.MeanSquaredError() #common to the 4 iterations
+model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae'])
+
+
+# # #train model
+history = model.fit(x, y, validation_split = 0.3, epochs = 25)
+
+# model.load_weights("model_aco_1_phase2")
 
 
 d = -3
 dd = -1
 
+plot_diff=[]
+
 def frac(d = -2):
     difference = y[:, 0]-model(x)[:, 0]
     difference = np.reshape(difference, [-1])
+    plot_diff.append(difference[:100])
     print(difference[:10])
     l = np.where(abs(difference)<=10**(d),1,0)
     return float(float(np.sum(l))/len(l))
@@ -325,6 +286,7 @@ def frac(d = -2):
 hist1 = np.array(model(x)[:, 0])
 hist2 = np.array(y[:, 0])
 
+plt.figure('4_fig')
 ax = fig.add_subplot(2,2,1)
 plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN %s component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(need, dd, frac(dd), d, frac(d)))
 plt.hist(hist2, bins = 100, alpha = 0.5, label = 'True %s - Features: %s'%(need, LBN_output_features[0]))
@@ -335,76 +297,12 @@ plt.legend()#prop = {'size', 10})
 
 plt.savefig('Test_%i'%(figure_nb))
 
-def checks(df):
-    #The different *initial* 4 vectors, (E,px,py,pz)
-    pi_1 = np.array([df["pi_E_1"],df["pi_px_1"],df["pi_py_1"],df["pi_pz_1"]])
-    pi_2 = np.array([df["pi_E_2"],df["pi_px_2"],df["pi_py_2"],df["pi_pz_2"]])
-
-    pi0_1 = np.array([df["pi0_E_1"],df["pi0_px_1"],df["pi0_py_1"],df["pi0_pz_1"]])
-    pi0_2 = np.array([df["pi0_E_2"],df["pi0_px_2"],df["pi0_py_2"],df["pi0_pz_2"]])
-
-    #Charged and neutral pion momenta
-    pi_1_4Mom = Momentum4(df["pi_E_1"],df["pi_px_1"],df["pi_py_1"],df["pi_pz_1"])
-    pi_2_4Mom = Momentum4(df["pi_E_2"],df["pi_px_2"],df["pi_py_2"],df["pi_pz_2"])
-
-    #Same for the pi0
-    pi0_1_4Mom = Momentum4(df["pi0_E_1"],df["pi0_px_1"],df["pi0_py_1"],df["pi0_pz_1"])
-    pi0_2_4Mom = Momentum4(df["pi0_E_2"],df["pi0_px_2"],df["pi0_py_2"],df["pi0_pz_2"])
-    
-    inputs = [pi0_1_4Mom, pi_1_4Mom, pi0_2_4Mom, pi_2_4Mom]
-    x = tf.convert_to_tensor(inputs, dtype=np.float32)
-    x = tf.transpose(x, [2, 0, 1])   
-    
-    #This is the COM frame of the two charged pions w.r.t. which we'll boost
-    ref_COM_4Mom=Momentum4(pi_1_4Mom+pi_2_4Mom)
-    boost = Momentum4(ref_COM_4Mom[0], -ref_COM_4Mom[1], -ref_COM_4Mom[2], -ref_COM_4Mom[3])
-
-    #energies=[df4["pi_E_1"],df4["pi_E_2"],df4["pi0_E_1"],df4["pi0_E_2"]]
-
-    #Lorentz boost everything in the ZMF of the two charged pions
-    pi0_1_4Mom_star=pi0_1_4Mom.boost_particle(boost)
-    pi0_2_4Mom_star=pi0_2_4Mom.boost_particle(boost)
-
-    #Lorentz boost everything in the ZMF of the two neutral pions
-    pi_1_4Mom_star=pi_1_4Mom.boost_particle(boost)
-    pi_2_4Mom_star=pi_2_4Mom.boost_particle(boost)
-
-
-    #calculating the perpependicular component
-    pi0_1_3Mom_star_perp=cross_product(pi0_1_4Mom_star[1:],pi_1_4Mom_star[1:])
-    pi0_2_3Mom_star_perp=cross_product(pi0_2_4Mom_star[1:],pi_2_4Mom_star[1:])
-
-    #Now normalise:
-    pi0_1_3Mom_star_perp=pi0_1_3Mom_star_perp/norm(pi0_1_3Mom_star_perp)
-    pi0_2_3Mom_star_perp=pi0_2_3Mom_star_perp/norm(pi0_2_3Mom_star_perp)
-
-    pi0_1_4Mom_star_perp = [pi0_1_4Mom_star[0], pi0_1_3Mom_star_perp[0], pi0_1_3Mom_star_perp[1], pi0_1_3Mom_star_perp[2]]
-    pi0_2_4Mom_star_perp = [pi0_1_4Mom_star[0], pi0_2_3Mom_star_perp[0], pi0_2_3Mom_star_perp[1], pi0_2_3Mom_star_perp[2]]
-
-    #Calculating phi_star
-    phi_CP_unshifted=np.arccos(dot_product(pi0_1_3Mom_star_perp,pi0_2_3Mom_star_perp))
-
-    phi_CP=phi_CP_unshifted
-
-    #The energy ratios
-    y_T = np.array(df4['y_1_1']*df4['y_1_2'])
-
-    #The O variable
-    cross=np.array(np.cross(pi0_1_3Mom_star_perp.transpose(),pi0_2_3Mom_star_perp.transpose()).transpose())
-    bigO=dot_product(pi_2_4Mom_star[1:],cross)
-
-    #perform the shift w.r.t. O* sign
-    phi_CP_1=np.where(bigO>0, phi_CP_unshifted, 2*np.pi-phi_CP_unshifted)
-    
-    target_y = df[["aco_angle_6"]]#[]#, bigO, y_T]
-    y = tf.convert_to_tensor(target_y, dtype=np.float32)    
-    return x,y
-
-
-x,y = checks(df_ps)
+x,y = Calculation(df_ps).checks()
 hist3 = np.array(model(x)[:, 0])
 hist4 = np.array(y[:, 0])
 
+
+plt.figure('4_fig')
 ax = fig.add_subplot(2,2,2)
 plt.hist(hist3, bins = 100, alpha = 0.5, label = "NN %s PS component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(need, dd, frac(dd), d, frac(d)))
 plt.hist(hist4, bins = 100, alpha = 0.5, label = 'True %s PS - Features: %s'%(need, LBN_output_features[0]))
@@ -415,10 +313,10 @@ plt.legend()#prop = {'size', 10})
 
 plt.savefig('Test_%i'%(figure_nb))
 
-x,y = checks(df_sm)
+x,y = Calculation(df_sm).checks()
 hist5 = np.array(model(x)[:, 0])
 hist6 = np.array(y[:, 0])
-
+plt.figure('4_fig')
 ax = fig.add_subplot(2,2,3)
 plt.hist(hist5, bins = 100, alpha = 0.5, label = "NN %s SM component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(need, dd, frac(dd), d, frac(d)))
 plt.hist(hist6, bins = 100, alpha = 0.5, label = 'True %s SM - Features: %s'%(need, LBN_output_features[0]))
@@ -438,7 +336,6 @@ plt.grid()
 plt.legend()#prop = {'size', 10})
 
 plt.savefig('Test_%i'%(figure_nb))
-
 
 
 
