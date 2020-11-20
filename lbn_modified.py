@@ -890,7 +890,7 @@ class FeatureFactory(FeatureFactoryBase):
         tf_y_1 = (self.pi_1_star()[...,0] - self.pi0_1_star()[...,0])/(self.pi_1_star()[...,0] + self.pi0_1_star()[...,0])
         tf_y_2 = (self.pi_2_star()[...,0] - self.pi0_2_star()[...,0])/(self.pi_2_star()[...,0] + self.pi0_2_star()[...,0])
         
-        tf_y_tau = tf.math.multiply(tf_y_1,tf_y_2)
+        tf_y_tau = tf_y_1*tf_y_2 #tf.math.multiply(tf_y_1,tf_y_2)
         return tf.expand_dims(tf_y_tau, -1)
     
     
@@ -916,7 +916,11 @@ class FeatureFactory(FeatureFactoryBase):
         
         #and here back to cos, because the NN doesn't deal with cos function that well...
         
-        phi_cp = tf.where(self.only_y_tau()[...,0]<0, phi_cp, tf.where(phi_cp<pi, phi_cp+np.pi, phi_cp-pi))
+        
+        #plain version
+        #phi_cp = tf.where(self.only_y_tau()[...,0]<0, phi_cp, tf.where(phi_cp<pi, phi_cp+np.pi, phi_cp-pi))
+        
+        phi_cp = tf.where(self.only_y_tau()[...,0]<0, phi_cp, phi_cp-tf.math.sign(phi_cp-np.pi)*np.pi)
         
         return tf.expand_dims(phi_cp, -1)
    

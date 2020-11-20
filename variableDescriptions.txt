@@ -1,5 +1,3 @@
-Danny's original readme.txt
-
 --------------------------------------------------------------------------
 
 Useful materials
@@ -86,23 +84,42 @@ Variables to be used in the training:
  aco_angle_5             - for l+rho, pi+rho, l+a1, pi+a1, and rho+rho channels this is the acoplanarity angle between rho decay plane and l/pi IP (for a1 use rho from a1->rho+pi cascade), for rho+rho channel the pi comes from leading tau and rho is from sub-leading 
  aco_angle_6             - for l+pi, pi+pi, l+rho, pi+rho, and rho+rho channels this is the acoplanarity angle between the two l/pi IPs
  aco_angle_7             - for rho+rho this is the acoplanarity angle between rho decay plane and pi IP. The pi comes from sub-leading tau and rho is from leading
+ pv_angle                - for the a1-a1 channel this is the angle computed using the Polarimetric vector method
  y_1_1                   - The value of (Epi - Epi0)/(Epi + Epi0) for the leading hadronic tau (tt only)    
  y_1_2                   - The value of (Epi - Epi0)/(Epi + Epi0) for the sub-leading hadronic tau (tt), or of the hadronic tau (et and mt)
  pt_1                    - pT of the muon/electron (et and mt), pT of the leading hadronic tau (tt)
  pt_2                    - pT of the hadronic tau (et and mt), pT of the sub-leading hadronic tau (tt)
- pi_px_1                 - pi_p{x,y,z}_1 are the x,y,z components of the pi from the leading hadronic tau (tt) or electron/muon (et and mt) 4-momenta
+ pi_px_1                 - For DM=0,1,2 pi_p{x,y,z}_1 are the x,y,z components of the pi from the leading hadronic tau (tt) or electron/muon (et and mt) 4-momenta. For DM=10,11 they are the components of the pi from the leading hadronic  with charge opposite to the other 2 pi's
  pi_py_1  
  pi_pz_1  
- pi_E_1                  - Energy of the pi from the leading hadronic tau (tt) or electron/muon (et and mt) 
- pi_px_2                 - pi_p{x,y,z}_2 are the x,y,z components of the pi from the sub-leading hadronic tau (tt) or the pi from the hadronic tau (et and mt) 4-momenta
+ pi_E_1                  - For DM=0,1,2 energy of the pi from the leading hadronic tau (tt) or electron/muon (et and mt). For DM=10,11 energy of the pi from the leading hadronic tau with charge opposite to the other 2 pi's (tt only)
+ pi_px_2                 - For DM=0,1,2 pi_p{x,y,z}_2 are the x,y,z components of the pi from the sub-leading hadronic tau (tt) or the pi from the hadronic tau (et and mt) 4-momenta. For DM=10,11 they are the components of the pi from the sub-leading hadronic tau (tt) or the hadronic tau (mt and et) with charge opposite to the other 2 pi's
  pi_py_2  
  pi_pz_2  
- pi_E_2                  - Energy of the the pi from the sub-leading hadronic tau (tt) or the pi from the hadronic tau (et and mt)
- pi0_px_1                - pi0_pi{x,y,z}_1 are the x,y,z components of the pi0 from the leading hadronic tau (tt only) 
+ pi_E_2                  - For DM=0,1,2 energy of the the pi from the sub-leading hadronic tau (tt) or the pi from the hadronic tau (et and mt). For DM=10,11 they are the components of the pi from the sub-leading hadronic tau (tt) or the hadronic tau (mt and et) with charge opposite to the other 2 pi's 
+ 
+ pi2_px_1                 - For DM=10,11 pi2_p{x,y,z}_1 are the components of the pi from the leading hadronic tau with charge opposite to the first pi (pi_p{x,y,z}_1) with invariant mass of the pair closest to the a1
+ pi2_py_1  
+ pi2_pz_1  
+ pi2_E_1                  - For DM=10,11 the energy of the pi from the leading hadronic tau with charge opposite to the first pi (pi_p{x,y,z}_1) with invariant mass of the pair closest to the a1
+ 
+ pi2_px_2                 - For DM=10,11 pi2_p{x,y,z}_2 are the components of the pi from the leading hadronic tau (tt) or the hadronic tau (mt and et) with charge opposite to the first pi (pi_p{x,y,z}_1) with invariant mass of the pair closest to the a1
+ pi2_py_2  
+ pi2_pz_2  
+ pi2_E_2                  - For DM=10,11 the energy of the pi from the leading hadronic tau (tt) or the hadronic tau (et and mt) with charge opposite to the first pi (pi_p{x,y,z}_1) with invariant mass of the pair closest to the a1
+ pi3_px_1                 - For DM=10,11 pi3_p{x,y,z}_1 are the components of the pi from the leading hadronic tau with charge opposite to the first pi (pi_p{x,y,z}_1) with invariant mass of the pair furthest to the a1
+ pi3_py_1  
+ pi3_pz_1  
+ pi3_E_1                  - For DM=10,11 the energy of the pi from the leading hadronic tau with charge opposite to the first pi (pi_p{x,y,z}_1) with invariant mass of the pair closest to the a1
+ pi3_px_2                 - For DM=10,11 pi3_p{x,y,z}_2 are the components of the pi from the leading hadronic tau (tt) or the hadronic tau (mt and et) with charge opposite to the first pi (pi_p{x,y,z}_1) with invariant mass of the pair furthest to the a1
+ pi3_py_2  
+ pi3_pz_2  
+ pi3_E_2                  - For DM=10,11 the energy of the pi from the leading hadronic tau (tt) or the hadronic tau (et and mt) with charge opposite to the first pi (pi_p{x,y,z}_1) with invariant mass of the pair closest to the a1
+ pi0_px_1                - pi0_pi{x,y,z}_1 are the x,y,z components of the pi0 from the leading hadronic tau (tt only). 
  pi0_py_1 
  pi0_pz_1 
- pi0_E_1                 - Energy of the pi0 from the leading hadronic tau (tt only)
- pi0_px_2                - pi0_p{x,y,z}_2 are the x,y,z components of the pi0 from the sub-leading hadronic tau (tt) or the pi0 from the hadronic tau (et and mt) 4-momenta
+ pi0_E_1                 - Energy of the pi0 from the leading hadronic tau (tt only). 
+ pi0_px_2                - pi0_p{x,y,z}_2 are the x,y,z components of the pi0 from the sub-leading hadronic tau (tt) or the pi0 from the hadronic tau (et and mt) 4-momenta. 
  pi0_py_2 
  pi0_pz_2   
  pi0_E_2                 - Energy of the the pi0 from the sub-leading hadronic tau (tt) or the pi0 from the hadronic tau (et and mt)
@@ -172,6 +189,37 @@ Variables to be used in the training:
  ip_sig_1    - The IP significance (length/uncertainty) for the muon/electron (et and mt) or the leading hadronic tau (tt) 
  ip_sig_2    - The IP significance (length/uncertainty) for the hadronic tau (et and mt) or the sub-leading hadronic tau (tt)
  
+ sv_x_1      - sv_{x,y,z}_1 are the x,y,z components of the SV-PVvector for the muon/electron (et and mt) or the leading hadronic tau (tt) 
+ sv_y_1   
+ sv_z_1   
+ sv_x_2      - sv_{x,y,z}_2 are the x,y,z components of the SV-PV vector for the hadronic tau (et and mt) or the sub-leading hadronic tau (tt) 
+ sv_y_2   
+ sv_z_2   
+ svcov00_1   - svcovij_1 are the elements of the SV-PV covariance matrix for the muon/electron (et and mt) or the leading hadronic tau (tt)
+ svcov01_1
+ svcov02_1
+ svcov10_1
+ svcov11_1
+ svcov12_1
+ svcov20_1
+ svcov21_1
+ svcov22_1
+ svcov00_2   - svcovij_1 are the elements of the SV-PV covariance matrix for the hadronic (et and mt) or the sub-leading hadronic tau (tt)
+ svcov01_2
+ svcov02_2
+ svcov10_2
+ svcov11_2
+ svcov12_2
+ svcov20_2
+ svcov21_2
+ svcov22_2
+ 
+ gen_nu_p_1  - the momenta (==energy) of the neutrinos, only available in the AllHiggs root file
+ gen_nu_p_2
+ gen_nu_phi_1  - the phi of the leading neutrino
+ gen_nu_phi_2  - the phi of the subleading neutrino
+ gen_nu_eta_1
+ gen_nu_eta_2
 --------------------------------------------------------------------------
  
 Selecting different tau decay modes
@@ -186,3 +234,22 @@ The following selections are used to select pi, rho, a1:
   rho: mva_dm_{1,2}==1 && tau_decay_mode_{1,2}==1
   a1(->1pi+2pi0): mva_dm_{1,2}==2 && tau_decay_mode_{1,2}==1 
   a1(->3pi):  mva_dm_{1,2}==10
+  
+--------------------------------------------------------------------------
+
+Working on cern machines
+
+--------------------------------------------------------------------------
+
+#ssh into a cern machine:
+
+ssh -X -Y cern_username@lxplus.cern.ch
+
+#setup a CMSSW workarea:
+
+cmsrel CMSSW_10_2_19
+
+#everytime you log into the a machine you need to setup the CMSSW environment:
+
+cd CMSSW_10_2_19/src
+cmsenv
