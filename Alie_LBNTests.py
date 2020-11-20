@@ -187,10 +187,10 @@ class Calculation:
     
     def checks(self):
 
-        target = [self.df["aco_angle_7"]]#self.df["aco_angle_7"]]
+        target = [self.df["aco_angle_1"]]#self.df["aco_angle_7"]]
         y = tf.transpose(tf.convert_to_tensor(target, dtype=np.float32))
 
-        inputs = [self.impact_param_1, self.pi_1_4Mom, self.pi0_2_4Mom, self.pi_2_4Mom]
+        inputs = [self.pi0_1_4Mom, self.pi_1_4Mom, self.pi0_2_4Mom, self.pi_2_4Mom]
         x = tf.convert_to_tensor(inputs, dtype=np.float32)
         x = tf.transpose(x, [2, 0, 1])
 
@@ -201,8 +201,8 @@ class Calculation:
 target = Calculation(df4)
 x,y = target.checks()
 node_nb = 30 #64#48#32#64
-need = 'aco_angle_7'
-figure_nb = 9
+need = 'aco_angle_1'
+figure_nb = 1
 
 print(target.y_T[:10], 'y_tau')
 print(target.bigO[:10], 'big_O')
@@ -224,8 +224,8 @@ LBN_output_features = ["only_phi_CP_1", "only_y_tau"]#"only_phi_CP_1"]#, "only_y
 myLBNLayer = LBNLayer((4, 4), 4, n_restframes=1, boost_mode=LBN.PRODUCT, features=LBN_output_features)
 
 #set the LBN weights to known values, thanks kingsley
-weights = [np.eye(4), np.reshape(np.array([0, 1, 0, 1], dtype=np.float32), (4,1))]
-myLBNLayer.set_weights(weights)
+#weights = [np.eye(4), np.reshape(np.array([0, 1, 0, 1], dtype=np.float32), (4,1))]
+#myLBNLayer.set_weights(weights)
 
 
 #define NN model and compile, now merging 2 3 and all the way to output
