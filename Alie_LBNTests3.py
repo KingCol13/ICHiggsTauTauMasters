@@ -129,7 +129,7 @@ class Calculation:
         self.impact_param_1 = Momentum4(np.zeros(len(df["ip_x_1"])),df["ip_x_1"],df["ip_y_1"],df["ip_z_1"])
         self.impact_param_2 = Momentum4(np.zeros(len(df["ip_x_2"])),df["ip_x_2"],df["ip_y_2"],df["ip_z_2"])
 
-        #check: do the same thing but re-naming 
+        #comment or uncomment depending on which aco_angle you want 
         #self.pi0_1_4Mom = self.impact_param_1
         #self.pi0_2_4Mom = self.impact_param_2
 
@@ -137,7 +137,7 @@ class Calculation:
         self.ref_COM_4Mom = Momentum4(self.pi_1_4Mom+self.pi_2_4Mom)
         boost = Momentum4(self.ref_COM_4Mom[0], -self.ref_COM_4Mom[1], -self.ref_COM_4Mom[2], -self.ref_COM_4Mom[3])
         
-        #
+        
         boost = -self.ref_COM_4Mom
         #energies=[df4["pi_E_1"],df4["pi_E_2"],df4["pi0_E_1"],df4["pi0_E_2"]]
 
