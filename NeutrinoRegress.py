@@ -18,6 +18,14 @@ from pylorentz import Momentum4
 from pylorentz import Position4
 from lbn_modified import LBN, LBNLayer
 
+# stop tensorflow trying to overfill GPU memory
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+  try:
+    for gpu in gpus:
+      tf.config.experimental.set_memory_growth(gpu, True)
+  except RuntimeError as e:
+    print(e)
 #%% Data loading
 
 tree = uproot.open("MVAFILE_AllHiggs_tt.root")["ntuple"]
@@ -43,7 +51,15 @@ neutrino_features = [  "gen_nu_p_1", "gen_nu_p_2",
 
 met_features = ["met", "metx", "mety"]
 
-df = tree.pandas.df(momenta_features+other_features+target+selectors+neutrino_features+met_features)
+sv_features = ["sv_x_1", "sv_y_1", "sv_z_1", "sv_x_2", "sv_y_2", "sv_z_2"]
+
+ip_features = ["ip_x_1", "ip_y_1", "ip_z_1", "ip_x_2", "ip_y_2", "ip_z_2"]
+
+phi_cp_feature = ["gen_phitt"]
+
+df = tree.pandas.df(momenta_features+other_features+target+selectors
+                    +neutrino_features+met_features+sv_features+sv_features+ip_features
+                    +phi_cp_feature)
 
 df = df[
       (df["tau_decay_mode_1"] == 1) 
@@ -63,10 +79,11 @@ pi_2_lab = Momentum4(df["pi_E_2"], df["pi_px_2"], df["pi_py_2"], df["pi_pz_2"])
 pi0_1_lab = Momentum4(df["pi0_E_1"], df["pi0_px_1"], df["pi0_py_1"], df["pi0_pz_1"])
 pi0_2_lab = Momentum4(df["pi0_E_2"], df["pi0_px_2"], df["pi0_py_2"], df["pi0_pz_2"])
 
-# Create 4-vectors in the ZMF
+# Find the boost to ZMF
 zmf_momentum = pi_1_lab + pi_2_lab
 boost = Momentum4(zmf_momentum[0], -zmf_momentum[1], -zmf_momentum[2], -zmf_momentum[3])
 
+# Calculate 4-vectors in the ZMF
 pi_1_ZMF = pi_1_lab.boost_particle(boost)
 pi_2_ZMF = pi_2_lab.boost_particle(boost)
 
@@ -155,16 +172,29 @@ plt.show()
 
 #%% Histogram
 
-pred = model(x)[:,0]
-true = y[:,1]
+pred = np.array(model(x)[:,3])
+true = np.array(y[:,3])
 
 plt.figure()
 plt.title("Neural Network Performance")
 plt.xlabel("Value")
 plt.ylabel("Frequency")
+#plt.xlim(-5, 5)
 plt.hist(pred, bins = 100, alpha = 0.5, label="Predicted")
 plt.hist(true, bins = 100, alpha = 0.5, label="True")
 plt.xlabel("phi_cp_unshifted")
 plt.grid()
+plt.legend(loc="upper right")
+plt.show()
+
+
+#%% Aco-angle vs Phi_tt histogram
+
+plt.figure()
+plt.title("Aco Angle 1 and Phi_tt Correlation")
+plt.xlabel("aco_angle_1")
+plt.ylabel("gen_phitt")
+plt.hist2d(df["aco_angle_1"], df["gen_phitt"], bins=50)
 plt.legend()
+plt.grid()
 plt.show()
