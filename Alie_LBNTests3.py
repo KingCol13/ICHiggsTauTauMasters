@@ -37,7 +37,7 @@ from pylorentz import Position4
 # loading the tree
 tree = uproot.open("/eos/user/d/dwinterb/SWAN_projects/Masters_CP/MVAFILE_GluGluHToTauTauUncorrelatedDecay_Filtered_tt_2018.root")["ntuple"]
 print("\n Tree loaded\n")
-
+#tree = uproot.open("/eos/user/d/dwinterb/SWAN_projects/Masters_CP/MVAFILE_AllHiggs_tt.root")["ntuple"]
 
 # define what variables are to be read into the dataframe
 momenta_features = [ "pi_E_1", "pi_px_1", "pi_py_1", "pi_pz_1", #leading charged pi 4-momentum
@@ -129,14 +129,16 @@ class Calculation:
         self.impact_param_1 = Momentum4(np.zeros(len(df["ip_x_1"])),df["ip_x_1"],df["ip_y_1"],df["ip_z_1"])
         self.impact_param_2 = Momentum4(np.zeros(len(df["ip_x_2"])),df["ip_x_2"],df["ip_y_2"],df["ip_z_2"])
 
-        #check: do the same thing but re-naming 
+        #comment or uncomment depending on which aco_angle you want 
         #self.pi0_1_4Mom = self.impact_param_1
         #self.pi0_2_4Mom = self.impact_param_2
 
         #This is the COM frame of the two charged pions w.r.t. which we'll boost
         self.ref_COM_4Mom = Momentum4(self.pi_1_4Mom+self.pi_2_4Mom)
         boost = Momentum4(self.ref_COM_4Mom[0], -self.ref_COM_4Mom[1], -self.ref_COM_4Mom[2], -self.ref_COM_4Mom[3])
-
+        
+        
+        boost = -self.ref_COM_4Mom
         #energies=[df4["pi_E_1"],df4["pi_E_2"],df4["pi0_E_1"],df4["pi0_E_2"]]
 
         #Lorentz boost everything in the ZMF of the two charged pions
@@ -163,57 +165,89 @@ class Calculation:
                                      pi0_2_3Mom_star_perp[1], pi0_2_3Mom_star_perp[2]]
 
         #Calculating phi_star
-        self.phi_CP_unshifted=np.arccos(dot_product(pi0_1_3Mom_star_perp,pi0_2_3Mom_star_perp))
+        self.phi_CP_unshifted = np.arccos(dot_product(pi0_1_3Mom_star_perp,pi0_2_3Mom_star_perp))
+        
+        print(self.phi_CP_unshifted[:10],'This is phi_CP')
 
         self.phi_CP = self.phi_CP_unshifted
+        
+        print(pi0_1_3Mom_star_perp[:,23], 'this is pi0_1_3mom')
 
         #The energy ratios
         self.y_T = np.array(df['y_1_1']*df['y_1_2'])
+        #y_1_1 = (self.pi_1_4Mom_star[0] - self.pi0_1_4Mom_star[0])/(self.pi_1_4Mom_star[0] + self.pi0_1_4Mom_star[0])
+        #y_1_2 = (self.pi_2_4Mom_star[0] - self.pi0_2_4Mom_star[0])/(self.pi_2_4Mom_star[0] + self.pi0_2_4Mom_star[0])
 
+        #self.y_T = y_1_1 * y_1_2
+        
         #The O variable
         cross = np.array(np.cross(pi0_1_3Mom_star_perp.transpose(),pi0_2_3Mom_star_perp.transpose()).transpose())
         self.bigO = dot_product(self.pi_2_4Mom_star[1:],cross)
+        
+        print(self.bigO[:10], '\n this is big0')
 
         #perform the shift w.r.t. O* sign
-        self.phi_CP_1 = np.where(self.bigO>0, self.phi_CP_unshifted, 2*np.pi-self.phi_CP_unshifted)
+        
+        
+        #phi_CP=np.where(self.bigO>=0, 2*np.pi-self.phi_CP_unshifted, self.phi_CP_unshifted)
+        self.phi_CP_1 = np.where(self.bigO>=0, 2*np.pi-self.phi_CP_unshifted, self.phi_CP_unshifted)
+        
+        print(self.phi_CP_1[:10], '\n this is after first shft')
 
-        self.phi_CP_2 = np.where(self.y_T<=0, self.phi_CP+np.pi, self.phi_CP-np.pi)
+       # self.phi_CP_2 = np.where(self.y_T<=0, self.phi_CP+np.pi, self.phi_CP-np.pi)
 
         #additionnal shift that needs to be done do see differences between odd and even scenarios, with y=Energy ratios
-        self.phi_CP = np.where(self.y_T>=0, np.where(self.phi_CP<np.pi, self.phi_CP+np.pi, self.phi_CP-np.pi), self.phi_CP)
+        self.phi_CP = np.where(self.y_T>=0, np.where(self.phi_CP_1<np.pi, self.phi_CP_1+np.pi, self.phi_CP_1-np.pi), self.phi_CP_1)
         
         self.df = df
+        
+        print(self.phi_CP[:10], 'this is full')
+        
+        self.y = df["aco_angle_1"]
     
     def checks(self):
 
-        target = [self.df["aco_angle_7"]]#self.df["aco_angle_7"]]
+        target = [self.df["aco_angle_1"]]#self.df["aco_angle_7"]]
         y = tf.transpose(tf.convert_to_tensor(target, dtype=np.float32))
 
         inputs = [self.pi0_1_4Mom, self.pi_1_4Mom, self.pi0_2_4Mom, self.pi_2_4Mom]
         x = tf.convert_to_tensor(inputs, dtype=np.float32)
         x = tf.transpose(x, [2, 0, 1])
-
-        return x,y
-
-################################# Here include aco_angle next ##############################
-
-target = Calculation(df4)
-x,y = target.checks()
-node_nb = 30 #64#48#32#64
-need = 'aco_angle_7'
-figure_nb = 16
-
-#the lab frame inputs
-k = tf.convert_to_tensor([#target.impact_param_1[0], target.impact_param_1[1], target.impact_param_1[2], target.impact_param_1[3],
-                          target.pi0_1_4Mom[0], target.pi0_1_4Mom[1], target.pi0_1_4Mom[2], target.pi0_1_4Mom[3],
-                          target.pi_1_4Mom[0], target.pi_1_4Mom[1], target.pi_1_4Mom[2], target.pi_1_4Mom[3],
-                          #target.pi0_2_4Mom[0], target.pi0_2_4Mom[1], target.pi0_2_4Mom[2], target.pi0_2_4Mom[3],
-                          target.impact_param_2[0], target.impact_param_2[1], target.impact_param_2[2], target.impact_param_2[3],
-                         target.pi_2_4Mom[0], target.pi_2_4Mom[1], target.pi_2_4Mom[2], target.pi_2_4Mom[3]],
+        
+        k = tf.convert_to_tensor([
+                          self.impact_param_1[0], self.impact_param_1[1], self.impact_param_1[2], self.impact_param_1[3],
+                          #self.pi0_1_4Mom[0], self.pi0_1_4Mom[1], self.pi0_1_4Mom[2], self.pi0_1_4Mom[3],
+                          self.pi_1_4Mom[0], self.pi_1_4Mom[1], self.pi_1_4Mom[2], self.pi_1_4Mom[3],
+                          #self.pi0_2_4Mom[0], self.pi0_2_4Mom[1], self.pi0_2_4Mom[2], self.pi0_2_4Mom[3],
+                          self.impact_param_2[0], self.impact_param_2[1], self.impact_param_2[2], self.impact_param_2[3],
+                          self.pi_2_4Mom[0], self.pi_2_4Mom[1], self.pi_2_4Mom[2], self.pi_2_4Mom[3]],
                          dtype=np.float32)
 
 # the extra info we are giving
-l = tf.convert_to_tensor([target.y_T], dtype=np.float32)
+        l = tf.convert_to_tensor([self.y_T], dtype=np.float32)
+
+        return x,y,k,l
+
+################################# Here include aco_angle next ##############################
+
+target = Calculation(df_sm)
+x,y,k,l = target.checks()
+node_nb = 30 #64#48#32#64
+need = 'aco_angle_6'
+figure_nb = 66
+
+
+
+plt.figure()
+plt.hist(target.phi_CP, bins = 100, alpha = 0.5, label = 'My guess')
+plt.hist(target.y, bins = 100, alpha = 0.5, label = 'aco_angle_1')
+plt.grid()
+plt.legend()
+plt.savefig('aco_angle_6')
+
+raise end
+#the lab frame inputs
+
 
 
 #all the output we want  in some boosted frame
@@ -289,8 +323,10 @@ def frac(d = -2):
                                
 d = -3
 dd = -1
+fig = plt.figure('4_fig', figsize=(10,10), frameon = False)
+plt.title('Performance with functional API\n%s'%need, fontsize = 'x-large', weight = 'bold')
 
-plt.title('Performance with functional API', fontsize = 'x-large', weight = 'bold')
+ax = fig.add_subplot(2,2,1)
 plt.hist(hist1, bins = 100, alpha = 0.5, label = "NN %s component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(need, dd, frac(dd), d, frac(d)))
 plt.hist(hist2, bins = 100, alpha = 0.5, label = 'True %s - Features: phi_CP_1 (fixed)'%(need))
 plt.ylabel("Frequency", fontsize = 'x-large')
@@ -298,7 +334,47 @@ plt.xlabel("%s (epsilon = 10e-5)"%(need), fontsize = 'x-large')
 plt.grid()
 plt.legend()#prop = {'size', 10})
 
-plt.savefig('Test_func_%i'%(figure_nb))
+plt.savefig('Test_%i'%(figure_nb))
+
+
+
+x,y,k,l = Calculation(df_ps).checks()
+hist3 = np.array(model({"lab_frame": tf.transpose(k), "y_tau": tf.transpose(l)})[:, 0])
+hist4 = np.array(y[:, 0])
+
+ax = fig.add_subplot(2,2,2)
+plt.hist(hist3, bins = 100, alpha = 0.5, label = "NN %s PS component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(need, dd, frac(dd), d, frac(d)))
+plt.hist(hist4, bins = 100, alpha = 0.5, label = 'True %s PS - Features: %s'%(need, LBN_output_features[0]))
+plt.ylabel("Frequency", fontsize = 'x-large')
+plt.xlabel("%s PS (epsilon = 10e-5)"%(need), fontsize = 'x-large')
+plt.grid()
+plt.legend()#prop = {'size', 10})
+
+plt.savefig('Test_%i'%(figure_nb))
+
+x,y,k,l = Calculation(df_sm).checks()
+hist5 = np.array(model({"lab_frame": tf.transpose(k), "y_tau": tf.transpose(l)})[:, 0])
+hist6 = np.array(y[:, 0])
+plt.figure('4_fig')
+ax = fig.add_subplot(2,2,3)
+plt.hist(hist5, bins = 100, alpha = 0.5, label = "NN %s SM component : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(need, dd, frac(dd), d, frac(d)))
+plt.hist(hist6, bins = 100, alpha = 0.5, label = 'True %s SM - Features: %s'%(need, LBN_output_features[0]))
+plt.ylabel("Frequency", fontsize = 'x-large')
+plt.xlabel("%s SM (epsilon = 10e-5)"%(need), fontsize = 'x-large')
+plt.grid()
+plt.legend()#prop = {'size', 10})
+
+plt.savefig('Test_%i'%(figure_nb))
+
+ax = fig.add_subplot(2,2,4)
+plt.hist(hist5, bins = 100, alpha = 0.5, label = "NN %s SM component"%need)# : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(need, dd, frac(dd), d, frac(d)))
+plt.hist(hist3, bins = 100, alpha = 0.5, label = "NN %s PS component"%need)# : fraction($\Delta$<$10^{%i}$)=%.3f \n fraction($\Delta$<$10^{%i}$)=%.3f"%(need, dd, frac(dd), d, frac(d)))
+plt.ylabel("Frequency", fontsize = 'x-large')
+plt.xlabel("Comparision %s SM-PS (epsilon = 10e-5)"%(need), fontsize = 'x-large')
+plt.grid()
+plt.legend()#prop = {'size', 10})
+
+plt.savefig('Test_%i'%(figure_nb))
 
 
 raise END
