@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 from pylorentz import Momentum4
 from pylorentz import Position4
-from lbn_modified import LBN, LBNLayer
+from lbn import LBN, LBNLayer
 
 # stop tensorflow trying to overfill GPU memory
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -68,7 +68,9 @@ df = df[
     & (df["mva_dm_2"] == 1)
 ]
 
+#Filter out -9999 values for neutrino momenta
 df = df[df["gen_nu_p_1"] > -4000]
+df = df[df["gen_nu_p_2"] > -4000]
 
 #%% Create momenta and boost
 
@@ -78,6 +80,10 @@ pi_2_lab = Momentum4(df["pi_E_2"], df["pi_px_2"], df["pi_py_2"], df["pi_pz_2"])
 
 pi0_1_lab = Momentum4(df["pi0_E_1"], df["pi0_px_1"], df["pi0_py_1"], df["pi0_pz_1"])
 pi0_2_lab = Momentum4(df["pi0_E_2"], df["pi0_px_2"], df["pi0_py_2"], df["pi0_pz_2"])
+
+#Neutrinos
+nu_1_lab = Momentum4.e_m_eta_phi(df["gen_nu_p_1"], 0, df["gen_nu_eta_1"], df["gen_nu_phi_1"])
+nu_2_lab = Momentum4.e_m_eta_phi(df["gen_nu_p_2"], 0, df["gen_nu_eta_2"], df["gen_nu_phi_2"])
 
 # Find the boost to ZMF
 zmf_momentum = pi_1_lab + pi_2_lab
@@ -90,32 +96,10 @@ pi_2_ZMF = pi_2_lab.boost_particle(boost)
 pi0_1_ZMF = pi0_1_lab.boost_particle(boost)
 pi0_2_ZMF = pi0_2_lab.boost_particle(boost)
 
+nu_1_ZMF = nu_1_lab.boost_particle(boost)
+nu_2_ZMF = nu_2_lab.boost_particle(boost)
+
 print("Boosted particles.")
-
-#%% Calculate other targets
-# Find the transverse components
-pi0_1_trans = np.cross(pi0_1_ZMF[1:,:].transpose(), pi_1_ZMF[1:, :].transpose())
-pi0_2_trans = np.cross(pi0_2_ZMF[1:,:].transpose(), pi_2_ZMF[1:, :].transpose())
-
-# Normalise the lambda vectors
-pi0_1_trans = pi0_1_trans/np.linalg.norm(pi0_1_trans, ord=2, axis=1, keepdims=True)
-pi0_2_trans = pi0_2_trans/np.linalg.norm(pi0_2_trans, ord=2, axis=1, keepdims=True)
-
-#Calculate Phi_ZMF using dot product and arccos
-dot = np.sum(pi0_1_trans*pi0_2_trans, axis=1)
-phi_shift_0 = np.arccos(dot)
-
-# Calculate O
-preO = np.cross(pi0_1_trans, pi0_2_trans).transpose()*np.array(pi_2_ZMF[1:, :])
-big_O = np.sum(preO, axis=0)
-# Shift Phi based on O's sign
-phi_shift_1=np.where(big_O>0, phi_shift_0, 2*np.pi-phi_shift_0)
-
-# Shift phi based on energy ratios
-y_1 = np.array(df['y_1_1'])
-y_2 = np.array(df['y_1_2'])
-y_tau = np.array(df['y_1_1']*df['y_1_2'])
-phi_shift_2=np.where(y_tau<0, phi_shift_1, np.where(phi_shift_1<np.pi, phi_shift_1+np.pi, phi_shift_1-np.pi))
 
 #%% Features and targets
 
@@ -123,33 +107,49 @@ def normalise(x):
     return (x-tf.math.reduce_mean(x, axis=0))/tf.math.reduce_std(x, axis=0)
 
 #add visible product features
-x = tf.convert_to_tensor([pi0_1_ZMF, pi_1_ZMF, pi0_2_ZMF, pi_2_ZMF], dtype=tf.float32)
+x = tf.convert_to_tensor([pi0_1_lab, pi_1_lab, pi0_2_lab, pi_2_lab], dtype=tf.float32)
 x = tf.transpose(x, [2, 0, 1])
 x = tf.reshape(x, (x.shape[0], 16))
 
 #add met features
 x = tf.concat([x, tf.convert_to_tensor(df[met_features], dtype=tf.float32)], axis=1)
 
-y = tf.convert_to_tensor(df[neutrino_features], dtype=tf.float32)
+#add sv features
+x = tf.concat([x, tf.convert_to_tensor(df[sv_features], dtype=tf.float32)], axis=1)
 
+#add ip features
+x = tf.concat([x, tf.convert_to_tensor(df[ip_features], dtype=tf.float32)], axis=1)
+
+#y = tf.convert_to_tensor(df[neutrino_features], dtype=tf.float32)
+y = tf.convert_to_tensor([nu_1_lab, nu_2_lab], dtype=tf.float32)
+y = tf.transpose(y, [2, 0, 1])
 
 #normalise
-x = normalise(x)
-y = normalise(y)
+#x = normalise(x)
+#y = normalise(y)
+
+#%% Prototype on reduced dataset:
+prototype_num = 100000
+x = x[:prototype_num]
+y = y[:prototype_num]
 
 #%% Building network
 
 model = tf.keras.models.Sequential([
     tf.keras.layers.Flatten(),
-    tf.keras.layers.Dense(200, activation="relu"),
+    
+    tf.keras.layers.Dense(64, activation="relu"),
+    tf.keras.layers.Dense(64, activation="relu"),
     #tf.keras.layers.Dense(200, activation="relu"),
     #tf.keras.layers.Dense(200, activation="relu"),
-    #tf.keras.layers.Dense(200, activation="relu"),
-    tf.keras.layers.Dense(6)
+    tf.keras.layers.Dropout(0.1),
+    tf.keras.layers.Dense(8),
+    tf.keras.layers.Reshape((2, 4))
 ])
 
+opt = tf.keras.optimizers.Adam(0.001)
 loss_fn = tf.keras.losses.MeanSquaredError()
-model.compile(optimizer='adam',
+model.compile(optimizer=opt,
               loss=loss_fn,
               metrics=['mae'])
 
@@ -158,7 +158,7 @@ print("Model compiled.")
 
 #%% Training model
 
-history = model.fit(x, y, validation_split=0.3, epochs=5)
+history = model.fit(x, y, validation_split=0.3, epochs=10)
 
 #plot traning
 plt.figure()
@@ -170,23 +170,71 @@ plt.ylabel("Loss")
 plt.legend()
 plt.show()
 
-#%% Histogram
+#%% Histograms
 
-pred = np.array(model(x)[:,3])
-true = np.array(y[:,3])
+pred = np.array(model(x)[:,0,0])
+true = np.array(y[:,0,0])
 
 plt.figure()
-plt.title("Neural Network Performance")
-plt.xlabel("Value")
+plt.title("Neural Network Reconstruction of Leading Neutrino Momentum")
+plt.xlabel("GeV")
 plt.ylabel("Frequency")
+plt.xlim(0, 250)
 #plt.xlim(-5, 5)
 plt.hist(pred, bins = 100, alpha = 0.5, label="Predicted")
 plt.hist(true, bins = 100, alpha = 0.5, label="True")
-plt.xlabel("phi_cp_unshifted")
 plt.grid()
 plt.legend(loc="upper right")
 plt.show()
 
+pred = np.array(model(x)[:,0,1])
+true = np.array(y[:,0,1])
+
+plt.figure()
+plt.title("Neural Network Reconstruction of Leading Neutrino X Momentum")
+plt.xlabel("GeV")
+plt.ylabel("Frequency")
+plt.xlim(-100, 100)
+#plt.xlim(-5, 5)
+plt.hist(pred, bins = 100, alpha = 0.5, label="Predicted")
+plt.hist(true, bins = 100, alpha = 0.5, label="True")
+plt.grid()
+plt.legend(loc="upper right")
+plt.show()
+
+pred = np.array(model(x)[:,0,2])
+true = np.array(y[:,0,2])
+
+plt.figure()
+plt.title("Neural Network Reconstruction of Leading Neutrino Y Momentum")
+plt.xlabel("GeV")
+plt.ylabel("Frequency")
+plt.xlim(-100, 100)
+#plt.xlim(-5, 5)
+plt.hist(pred, bins = 100, alpha = 0.5, label="Predicted")
+plt.hist(true, bins = 100, alpha = 0.5, label="True")
+plt.grid()
+plt.legend(loc="upper right")
+plt.show()
+
+pred = np.array(model(x)[:,0,3])
+true = np.array(y[:,0,3])
+
+plt.figure()
+plt.title("Neural Network Reconstruction of Leading Neutrino Z Momentum")
+plt.xlabel("GeV")
+plt.ylabel("Frequency")
+plt.xlim(-200, 200)
+#plt.xlim(-5, 5)
+plt.hist(pred, bins = 100, alpha = 0.5, label="Predicted")
+plt.hist(true, bins = 100, alpha = 0.5, label="True")
+plt.grid()
+plt.legend(loc="upper right")
+plt.show()
+
+#%% Evaluate
+
+print(tf.math.reduce_mean(tf.math.abs(model(x)-y), axis=0)/tf.math.reduce_std(y, axis=0))
 
 #%% Aco-angle vs Phi_tt histogram
 
