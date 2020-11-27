@@ -7,7 +7,7 @@
 
 
 import sys
-sys.path.append("/eos/home-m/acraplet/.local/lib/python2.7/site-packages")
+#sys.path.append("/eos/home-m/acraplet/.local/lib/python2.7/site-packages")
 import uproot 
 import numpy as np
 
@@ -23,7 +23,7 @@ import tensorflow as tf
 
 
 #for some reason pylorentz is installed somewhere differently ?
-sys.path.append("/eos/home-a/acraplet/.local/lib/python2.7/site-packages")
+#sys.path.append("/eos/home-a/acraplet/.local/lib/python2.7/site-packages")
 from pylorentz import Momentum4
 from pylorentz import Vector4
 from pylorentz import Position4
@@ -35,7 +35,11 @@ from pylorentz import Position4
 
 
 # loading the tree
-tree = uproot.open("/eos/user/d/dwinterb/SWAN_projects/Masters_CP/MVAFILE_GluGluHToTauTauUncorrelatedDecay_Filtered_tt_2018.root")["ntuple"]
+#tree = uproot.open("/eos/user/d/dwinterb/SWAN_projects/Masters_CP/MVAFILE_GluGluHToTauTauUncorrelatedDecay_Filtered_tt_2018.root")["ntuple"]
+
+tree = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_AllHiggs_tt.root")["ntuple"]
+
+
 print("\n Tree loaded\n")
 #tree = uproot.open("/eos/user/d/dwinterb/SWAN_projects/Masters_CP/MVAFILE_AllHiggs_tt.root")["ntuple"]
 
