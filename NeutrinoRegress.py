@@ -172,12 +172,10 @@ plt.show()
 
 #%% Histograms
 
-#%% Histograms
-
 pred_minus_true = np.array(model(x)[:,0,0]) - np.array(y[:,0,0])
 
 plt.figure()
-plt.title("Neural Network Reconstruction of Leading Neutrino Momentum")
+plt.title("Neural Network Reconstruction of Leading Neutrino Energy")
 plt.xlabel("GeV")
 plt.ylabel("Frequency")
 plt.xlim(0, 250)
