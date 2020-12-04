@@ -35,10 +35,6 @@ momenta_features = [ "pi_E_1", "pi_px_1", "pi_py_1", "pi_pz_1", #leading charged
               "pi0_E_1","pi0_px_1","pi0_py_1","pi0_pz_1", #leading neutral pi 4-momentum
               "pi0_E_2","pi0_px_2","pi0_py_2","pi0_pz_2"] #subleading neutral pi 4-momentum
 
-other_features = [ "ip_x_1", "ip_y_1", "ip_z_1",        #leading impact parameter
-                   "ip_x_2", "ip_y_2", "ip_z_2",        #subleading impact parameter
-                   "y_1_1", "y_1_2"]    # ratios of energies
-
 target = [    "aco_angle_1"]  #acoplanarity angle
     
 selectors = [ "tau_decay_mode_1","tau_decay_mode_2",
@@ -57,7 +53,7 @@ ip_features = ["ip_x_1", "ip_y_1", "ip_z_1", "ip_x_2", "ip_y_2", "ip_z_2"]
 
 phi_cp_feature = ["gen_phitt"]
 
-df = tree.pandas.df(momenta_features+other_features+target+selectors
+df = tree.pandas.df(momenta_features+target+selectors
                     +neutrino_features+met_features+sv_features+sv_features+ip_features
                     +phi_cp_feature)
 
@@ -85,7 +81,16 @@ pi0_2_lab = Momentum4(df["pi0_E_2"], df["pi0_px_2"], df["pi0_py_2"], df["pi0_pz_
 nu_1_lab = Momentum4.e_m_eta_phi(df["gen_nu_p_1"], 0, df["gen_nu_eta_1"], df["gen_nu_phi_1"])
 nu_2_lab = Momentum4.e_m_eta_phi(df["gen_nu_p_2"], 0, df["gen_nu_eta_2"], df["gen_nu_phi_2"])
 
-# Find the boost to ZMF
+#met, ip, sv
+df_len = len(df)
+zeros = np.zeros(df_len)
+met_lab =  Position4(zeros, df['metx']  ,df['mety']  , zeros)
+#sv_1_lab = Position4(zeros, df['sv_x_1'], df['sv_y_1'], df['sv_z_1'])
+#sv_2_lab = Position4(zeros, df['sv_x_2'], df['sv_y_2'], df['sv_z_2'])
+ip_1_lab = Position4(zeros,  df['ip_x_1'], df['ip_y_1'], df['ip_z_1'])
+ip_2_lab = Position4(zeros,  df['ip_x_2'], df['ip_y_2'], df['ip_z_2'])
+
+# Find the boost to visible product ZNF
 zmf_momentum = pi_1_lab + pi_2_lab + pi0_1_lab + pi0_2_lab
 boost = Momentum4(zmf_momentum[0], -zmf_momentum[1], -zmf_momentum[2], -zmf_momentum[3])
 
@@ -99,6 +104,12 @@ pi0_2_ZMF = pi0_2_lab.boost_particle(boost)
 nu_1_ZMF = nu_1_lab.boost_particle(boost)
 nu_2_ZMF = nu_2_lab.boost_particle(boost)
 
+met_ZMF = met_lab.boost_particle(boost)
+#sv_1_ZMF = sv_1_lab.boost_particle(boost)
+#sv_2_ZMF = sv_2_lab.boost_particle(boost)
+ip_1_ZMF = ip_1_lab.boost_particle(boost)
+ip_2_ZMF = ip_2_lab.boost_particle(boost)
+
 print("Boosted particles.")
 
 #%% Features and targets
@@ -107,21 +118,23 @@ def normalise(x):
     return (x-tf.math.reduce_mean(x, axis=0))/tf.math.reduce_std(x, axis=0)
 
 #add visible product features
-x = tf.convert_to_tensor([pi0_1_lab, pi_1_lab, pi0_2_lab, pi_2_lab], dtype=tf.float32)
+x = tf.convert_to_tensor([pi0_1_ZMF, pi_1_ZMF, pi0_2_ZMF, pi_2_ZMF], dtype=tf.float32)
 x = tf.transpose(x, [2, 0, 1])
 x = tf.reshape(x, (x.shape[0], 16))
 
 #add met features
-x = tf.concat([x, tf.convert_to_tensor(df[met_features], dtype=tf.float32)], axis=1)
+x = tf.concat([x, tf.transpose(tf.convert_to_tensor(met_ZMF, dtype=tf.float32), [1, 0])], axis=1)
 
 #add sv features
-x = tf.concat([x, tf.convert_to_tensor(df[sv_features], dtype=tf.float32)], axis=1)
+#x = tf.concat([x, tf.convert_to_tensor(sv_1_ZMF, dtype=tf.float32)], axis=1)
+#x = tf.concat([x, tf.convert_to_tensor(sv_2_ZMF, dtype=tf.float32)], axis=1)
 
 #add ip features
-x = tf.concat([x, tf.convert_to_tensor(df[ip_features], dtype=tf.float32)], axis=1)
+x = tf.concat([x, tf.transpose(tf.convert_to_tensor(ip_1_ZMF, dtype=tf.float32), [1,0])], axis=1)
+x = tf.concat([x, tf.transpose(tf.convert_to_tensor(ip_2_ZMF, dtype=tf.float32), [1,0])], axis=1)
 
 #y = tf.convert_to_tensor(df[neutrino_features], dtype=tf.float32)
-y = tf.convert_to_tensor([nu_1_lab, nu_2_lab], dtype=tf.float32)
+y = tf.convert_to_tensor([nu_1_ZMF, nu_2_ZMF], dtype=tf.float32)
 y = tf.transpose(y, [2, 0, 1])
 
 #normalise
@@ -233,10 +246,10 @@ plt.show()
 
 #%% Higgs mass reconstruction
 
-pred_nu_1_lab = Momentum4(model(x_val)[:,0,0],model(x_val)[:,0,1], model(x_val)[:,0,2], model(x_val)[:,0,3])
-pred_nu_2_lab = Momentum4(model(x_val)[:,1,0],model(x_val)[:,1,1], model(x_val)[:,1,2], model(x_val)[:,1,3])
+pred_nu_1_ZMF = Momentum4(model(x_val)[:,0,0],model(x_val)[:,0,1], model(x_val)[:,0,2], model(x_val)[:,0,3])
+pred_nu_2_ZMF = Momentum4(model(x_val)[:,1,0],model(x_val)[:,1,1], model(x_val)[:,1,2], model(x_val)[:,1,3])
 
-higgs_lab = pred_nu_1_lab+pred_nu_2_lab+pi_1_lab[:,numTrain:]+pi_2_lab[:,numTrain:]+pi0_1_lab[:,numTrain:]+pi0_2_lab[:,numTrain:]
+higgs_lab = pred_nu_1_ZMF+pred_nu_2_ZMF+pi_1_ZMF[:,numTrain:]+pi_2_ZMF[:,numTrain:]+pi0_1_ZMF[:,numTrain:]+pi0_2_ZMF[:,numTrain:]
 
 higgs_mass = higgs_lab.m
 
@@ -258,8 +271,8 @@ plt.title("Leading Neutrino Pz")
 plt.xlabel("Prediction / GeV")
 plt.ylabel("True / GeV")
 plt.hist2d(model(x_val)[:,0,3], y_val[:,0,3], 1000)
-plt.xlim(-20, 20)
-plt.ylim(-20, 20)
+plt.xlim(-10, 10)
+plt.ylim(-10, 10)
 plt.show()
 
 
