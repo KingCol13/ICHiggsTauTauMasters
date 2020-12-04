@@ -45,11 +45,21 @@ neutrino_features = [  "gen_nu_p_1", "gen_nu_p_2",
                        "gen_nu_phi_1", "gen_nu_phi_2",
                        "gen_nu_eta_1", "gen_nu_eta_2"]
 
-met_features = ["met", "metx", "mety"]
+met_features = ["met", "metx", "mety", "metcov00", "metcov01", "metcov10", "metcov11"]
 
-sv_features = ["sv_x_1", "sv_y_1", "sv_z_1", "sv_x_2", "sv_y_2", "sv_z_2"]
+sv_features = ["sv_x_1", "sv_y_1", "sv_z_1",
+               "sv_x_2", "sv_y_2", "sv_z_2",
+               "svcov00_1", "svcov01_1", "svcov02_1",
+               "svcov10_1", "svcov11_1", "svcov12_1",
+               "svcov20_1", "svcov21_1", "svcov22_1",
+               "svcov00_2", "svcov01_2", "svcov02_2",
+               "svcov10_2", "svcov11_2", "svcov12_2",
+               "svcov20_2", "svcov21_2", "svcov22_2"]
 
-ip_features = ["ip_x_1", "ip_y_1", "ip_z_1", "ip_x_2", "ip_y_2", "ip_z_2"]
+ip_features = ["ip_x_1", "ip_y_1", "ip_z_1", "ip_x_2", "ip_y_2", "ip_z_2", 
+               "ipcov00_1", "ipcov01_1", "ipcov02_1", "ipcov10_1", "ipcov11_1", "ipcov12_1",
+               "ipcov20_1", "ipcov21_1", "ipcov22_1", "ipcov00_2", "ipcov01_2", "ipcov02_2",
+               "ipcov10_2", "ipcov11_2", "ipcov12_2", "ipcov20_2", "ipcov21_2", "ipcov22_2"]
 
 phi_cp_feature = ["gen_phitt"]
 
@@ -118,24 +128,22 @@ def normalise(x):
     return (x-tf.math.reduce_mean(x, axis=0))/tf.math.reduce_std(x, axis=0)
 
 #add visible product features
-x = tf.convert_to_tensor([pi0_1_ZMF, pi_1_ZMF, pi0_2_ZMF, pi_2_ZMF], dtype=tf.float32)
+x = tf.convert_to_tensor([pi0_1_lab, pi_1_lab, pi0_2_lab, pi_2_lab], dtype=tf.float32)
 x = tf.transpose(x, [2, 0, 1])
 x = tf.reshape(x, (x.shape[0], 16))
 
 #add met features
-x = tf.concat([x, tf.transpose(tf.convert_to_tensor(met_ZMF, dtype=tf.float32), [1, 0])], axis=1)
+x = tf.concat([x, tf.convert_to_tensor(df[met_features], dtype=tf.float32)], axis=1)
 
 #add sv features
-#x = tf.concat([x, tf.convert_to_tensor(sv_1_ZMF, dtype=tf.float32)], axis=1)
-#x = tf.concat([x, tf.convert_to_tensor(sv_2_ZMF, dtype=tf.float32)], axis=1)
+#x = tf.concat([x, tf.convert_to_tensor(df[sv_features], dtype=tf.float32)], axis=1)
 
 #add ip features
-x = tf.concat([x, tf.transpose(tf.convert_to_tensor(ip_1_ZMF, dtype=tf.float32), [1,0])], axis=1)
-x = tf.concat([x, tf.transpose(tf.convert_to_tensor(ip_2_ZMF, dtype=tf.float32), [1,0])], axis=1)
+x = tf.concat([x, tf.convert_to_tensor(df[ip_features], dtype=tf.float32)], axis=1)
 
 #y = tf.convert_to_tensor(df[neutrino_features], dtype=tf.float32)
-y = tf.convert_to_tensor([nu_1_ZMF, nu_2_ZMF], dtype=tf.float32)
-y = tf.transpose(y, [2, 0, 1])
+y = tf.convert_to_tensor([nu_1_lab.phi, nu_2_lab.phi], dtype=tf.float32)
+y = tf.transpose(y, [1, 0])
 
 #normalise
 #x = normalise(x)
@@ -169,9 +177,8 @@ model = tf.keras.models.Sequential([
     tf.keras.layers.Dense(64, activation="relu"),#, kernel_regularizer=tf.keras.regularizers.L1L2(0.01, 0.1)),
     #tf.keras.layers.Dense(200, activation="relu"),
     #tf.keras.layers.Dense(200, activation="relu"),
-    tf.keras.layers.Dropout(0.3),
-    tf.keras.layers.Dense(8),
-    tf.keras.layers.Reshape((2, 4))
+    #tf.keras.layers.Dropout(0.3),
+    tf.keras.layers.Dense(2)
 ])
 
 opt = tf.keras.optimizers.Adam(0.001)
@@ -185,7 +192,7 @@ print("Model compiled.")
 
 #%% Training model
 
-history = model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=10)
+history = model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=5)
 
 #plot traning
 plt.figure()
@@ -199,67 +206,15 @@ plt.show()
 
 #%% Histograms
 
-pred_minus_true = np.array(model(x_val)[:,0,0]) - np.array(y_val[:,0,0])
-
+res = np.array(model(x_val) - y_val)
 plt.figure()
-plt.title("Neural Network Reconstruction of Leading Neutrino Energy")
-plt.xlabel("GeV")
+plt.title("NN Predicted Minus True Phi")
+plt.xlabel("Phi / Radians")
 plt.ylabel("Frequency")
-plt.xlim(0, 250)
+#plt.xlim(-100, 100)
 #plt.xlim(-5, 5)
-plt.hist(pred_minus_true, bins = 100, alpha = 0.5, label="Predicted Minus True")
-plt.grid()
-plt.legend(loc="upper right")
-plt.show()
-
-plt.figure()
-plt.title("NN Predicted Minus True Leading Neutrino Momentum")
-plt.xlabel("GeV")
-plt.ylabel("Frequency")
-plt.xlim(-100, 100)
-#plt.xlim(-5, 5)
-pred_minus_true = np.array(model(x_val)[:,0,1]) - np.array(y_val[:,0,1])
-plt.hist(pred_minus_true, bins = 100, alpha = 0.5, label="px mean={:.2f}, std={:.2f}".format(np.mean(pred_minus_true), np.std(pred_minus_true)))
-pred_minus_true = np.array(model(x_val)[:,0,2]) - np.array(y_val[:,0,2])
-plt.hist(pred_minus_true, bins = 100, alpha = 0.5, label="py mean={:.2f}, std={:.2f}".format(np.mean(pred_minus_true), np.std(pred_minus_true)))
-pred_minus_true = np.array(model(x_val)[:,0,3]) - np.array(y_val[:,0,3])
-plt.hist(pred_minus_true, bins = 100, alpha = 0.5, label="pz mean={:.2f}, std={:.2f}".format(np.mean(pred_minus_true), np.std(pred_minus_true)))
-plt.grid()
-plt.legend(loc="upper right")
-plt.show()
-
-plt.figure()
-plt.title("NN Predicted Minus True Subleading Neutrino Momentum")
-plt.xlabel("GeV")
-plt.ylabel("Frequency")
-plt.xlim(-100, 100)
-#plt.xlim(-5, 5)
-pred_minus_true = np.array(model(x_val)[:,1,1]) - np.array(y_val[:,1,1])
-plt.hist(pred_minus_true, bins = 100, alpha = 0.5, label="px mean={:.2f}, std={:.2f}".format(np.mean(pred_minus_true), np.std(pred_minus_true)))
-pred_minus_true = np.array(model(x_val)[:,1,2]) - np.array(y_val[:,1,2])
-plt.hist(pred_minus_true, bins = 100, alpha = 0.5, label="py mean={:.2f}, std={:.2f}".format(np.mean(pred_minus_true), np.std(pred_minus_true)))
-pred_minus_true = np.array(model(x_val)[:,1,3]) - np.array(y_val[:,1,3])
-plt.hist(pred_minus_true, bins = 100, alpha = 0.5, label="pz mean={:.2f}, std={:.2f}".format(np.mean(pred_minus_true), np.std(pred_minus_true)))
-plt.grid()
-plt.legend(loc="upper right")
-plt.show()
-
-#%% Higgs mass reconstruction
-
-pred_nu_1_ZMF = Momentum4(model(x_val)[:,0,0],model(x_val)[:,0,1], model(x_val)[:,0,2], model(x_val)[:,0,3])
-pred_nu_2_ZMF = Momentum4(model(x_val)[:,1,0],model(x_val)[:,1,1], model(x_val)[:,1,2], model(x_val)[:,1,3])
-
-higgs_lab = pred_nu_1_ZMF+pred_nu_2_ZMF+pi_1_ZMF[:,numTrain:]+pi_2_ZMF[:,numTrain:]+pi0_1_ZMF[:,numTrain:]+pi0_2_ZMF[:,numTrain:]
-
-higgs_mass = higgs_lab.m
-
-plt.figure()
-plt.title("NN Higgs Mass After Regressing Neutrino Momentum")
-plt.xlabel("GeV")
-plt.ylabel("Frequency")
-plt.axvline(x=125.18, label="125.18GeV")
-plt.xlim(0, 300)
-plt.hist(higgs_mass, bins = 100, alpha = 0.5, label="mean={:.2f}, std={:.2f}".format(np.mean(higgs_mass), np.std(higgs_mass)))
+plt.hist(res[:,0], bins = 100, alpha = 0.5, label="phi_1 mean={:.2f}, std={:.2f}".format(np.mean(res[:,0]), np.std(res[:,0])))
+plt.hist(res[:,1], bins = 100, alpha = 0.5, label="phi_1 mean={:.2f}, std={:.2f}".format(np.mean(res[:,1]), np.std(res[:,1])))
 plt.grid()
 plt.legend(loc="upper right")
 plt.show()
@@ -270,9 +225,7 @@ plt.figure()
 plt.title("Leading Neutrino Pz")
 plt.xlabel("Prediction / GeV")
 plt.ylabel("True / GeV")
-plt.hist2d(model(x_val)[:,0,3], y_val[:,0,3], 1000)
-plt.xlim(-10, 10)
-plt.ylim(-10, 10)
+plt.hist2d(res[:,0], y_val[:,0], 1000)
 plt.show()
 
 
