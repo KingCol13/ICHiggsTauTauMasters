@@ -7,4 +7,5 @@ pip install uproot
 pip install numpy
 pip install pylorentz
 pip install lbn
+pip install matplotlib
 python --version
