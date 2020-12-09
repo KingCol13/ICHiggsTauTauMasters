@@ -1,6 +1,6 @@
 #!/bin/sh
-virtualenv --python=python3.6 htt
-source htt/bin/activate
+virtualenv --python=python3.6 httenv
+source httenv/bin/activate
 pip install --upgrade pip
 pip install tensorflow-gpu
 pip install uproot
