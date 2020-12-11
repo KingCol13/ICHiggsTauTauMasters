@@ -153,8 +153,8 @@ def checks(x_array, length):
 
     #length = 0#numTrain
 
-    E_1 = norm([regressed_array[:, i_nu1_py],regressed_array[:, i_nu1_py], regressed_array[:, i_nu1_pz]])
-    E_2 = norm([regressed_array[:, i_nu2_py],regressed_array[:, i_nu2_py], regressed_array[:, i_nu2_pz]])
+    E_1 = norm([regressed_array[:, i_nu1_px],regressed_array[:, i_nu1_py], regressed_array[:, i_nu1_pz]])
+    E_2 = norm([regressed_array[:, i_nu2_px],regressed_array[:, i_nu2_py], regressed_array[:, i_nu2_pz]])
 
 
     nu_1_regressed = Momentum4(E_1,regressed_array[:, i_nu1_px],regressed_array[:, i_nu1_py], regressed_array[:, i_nu1_pz])
