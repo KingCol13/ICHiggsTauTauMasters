@@ -443,6 +443,8 @@ m_tau_squared = 1.776**2
 
 nu_1_training = np.array(nu_1)[0]
 
+
+#these are the factors for each part of the custom loss function 
 ratio_tau = 10
 ratio_H = 4
 ratio_all = 1/10000
