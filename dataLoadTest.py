@@ -40,13 +40,20 @@ selectors = [ "tau_decay_mode_1","tau_decay_mode_2",
              "mva_dm_1","mva_dm_2"
              ]
 
-df = tree.pandas.df(momenta_features+target+selectors
+df = tree.pandas.df(momenta_features+selectors)
+"""
                     +neutrino_features+met_features+sv_features+sv_features+ip_features
                     +phi_cp_feature)
+"""
 
-for df in uproot3.pandas.iterate("MVAFILE_AllHiggs_tt.root", entrysteps=500):
+df_acc = pd.DataFrame()
+
+for df in uproot.pandas.iterate("MVAFILE_AllHiggs_tt.root", "ntuple", entrysteps=500):
+    # Apply filterings
     df = df[
       (df["tau_decay_mode_1"] == 1) 
     & (df["tau_decay_mode_2"] == 1) 
     & (df["mva_dm_1"] == 1) 
-    & (df["mva_dm_2"] == 1)
+    & (df["mva_dm_2"] == 1)]
+    
+    df_acc.append(df, ignore_index=True)

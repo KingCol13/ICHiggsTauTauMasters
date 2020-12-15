@@ -45,22 +45,26 @@ neutrino_features = [  "gen_nu_p_1", "gen_nu_p_2",
                        "gen_nu_phi_1", "gen_nu_phi_2",
                        "gen_nu_eta_1", "gen_nu_eta_2"]
 
-met_features = ["met", "metx", "mety", "metcov00", "metcov01", "metcov10", "metcov11"]
+met_features = ["met", "metx", "mety"]#, "metcov00", "metcov01", "metcov10", "metcov11"]
 
 sv_features = ["sv_x_1", "sv_y_1", "sv_z_1",
-               "sv_x_2", "sv_y_2", "sv_z_2",
+               "sv_x_2", "sv_y_2", "sv_z_2"]
+"""
                "svcov00_1", "svcov01_1", "svcov02_1",
                "svcov10_1", "svcov11_1", "svcov12_1",
                "svcov20_1", "svcov21_1", "svcov22_1",
                "svcov00_2", "svcov01_2", "svcov02_2",
                "svcov10_2", "svcov11_2", "svcov12_2",
                "svcov20_2", "svcov21_2", "svcov22_2"]
-
-ip_features = ["ip_x_1", "ip_y_1", "ip_z_1", "ip_x_2", "ip_y_2", "ip_z_2", 
+"""
+    
+ip_features = ["ip_x_1", "ip_y_1", "ip_z_1", "ip_x_2", "ip_y_2", "ip_z_2"]
+"""
                "ipcov00_1", "ipcov01_1", "ipcov02_1", "ipcov10_1", "ipcov11_1", "ipcov12_1",
                "ipcov20_1", "ipcov21_1", "ipcov22_1", "ipcov00_2", "ipcov01_2", "ipcov02_2",
                "ipcov10_2", "ipcov11_2", "ipcov12_2", "ipcov20_2", "ipcov21_2", "ipcov22_2"]
-
+"""
+    
 phi_cp_feature = ["gen_phitt"]
 
 df = tree.pandas.df(momenta_features+target+selectors
@@ -86,6 +90,9 @@ pi_2_lab = Momentum4(df["pi_E_2"], df["pi_px_2"], df["pi_py_2"], df["pi_pz_2"])
 
 pi0_1_lab = Momentum4(df["pi0_E_1"], df["pi0_px_1"], df["pi0_py_1"], df["pi0_pz_1"])
 pi0_2_lab = Momentum4(df["pi0_E_2"], df["pi0_px_2"], df["pi0_py_2"], df["pi0_pz_2"])
+
+rho_1_lab = pi_1_lab + pi0_1_lab
+rho_2_lab = pi_2_lab + pi0_2_lab
 
 #Neutrinos
 nu_1_lab = Momentum4.e_m_eta_phi(df["gen_nu_p_1"], 0, df["gen_nu_eta_1"], df["gen_nu_phi_1"])
@@ -128,9 +135,19 @@ def normalise(x):
     return (x-tf.math.reduce_mean(x, axis=0))/tf.math.reduce_std(x, axis=0)
 
 #add visible product features
-x = tf.convert_to_tensor([pi0_1_lab, pi_1_lab, pi0_2_lab, pi_2_lab], dtype=tf.float32)
+x = tf.convert_to_tensor([pi0_1_lab, pi_1_lab, pi0_2_lab, pi_2_lab, rho_1_lab, rho_2_lab], dtype=tf.float32)
 x = tf.transpose(x, [2, 0, 1])
-x = tf.reshape(x, (x.shape[0], 16))
+x = tf.reshape(x, (x.shape[0], 24))
+
+"""
+#invariant masses
+mass_features = np.real([pi0_1_lab.m, pi_1_lab.m, pi0_2_lab.m, pi_2_lab.m, rho_1_lab.m, rho_2_lab.m])
+mass_features = tf.convert_to_tensor(mass_features, dtype=tf.float32)
+mass_features = tf.transpose(mass_features, [1, 0])
+x = tf.concat([x, mass_features], axis=1)
+"""
+
+
 
 #add met features
 x = tf.concat([x, tf.convert_to_tensor(df[met_features], dtype=tf.float32)], axis=1)
