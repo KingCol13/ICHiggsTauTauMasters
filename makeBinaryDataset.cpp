@@ -58,11 +58,19 @@ int main(int argc, char *argv[])
 	
 	// Make the reader object to iterate over
 	TTreeReader reader("ntuple", inFile);
-	
+
 	// Make output value readers bound to the reader
 	std::vector<TTreeReaderValue<double>> readerValueVec;
+	TTree *myTree = (TTree *) inFile->Get("ntuple");
+	
 	for(unsigned int i=3; i<argc; i++)
 	{
+		// First check the key is valid
+		if(myTree->GetLeaf(argv[i])==nullptr)
+		{
+			std::cerr << "Key \"" << argv[i] << "\" is not valid, exiting." << std::endl;
+			return -1;
+		}
 		readerValueVec.emplace_back(reader, argv[i]);
 	}
 	
@@ -81,6 +89,7 @@ int main(int argc, char *argv[])
 	outFile.open("recordData.dat", std::ios::binary);
 	
 	//for(unsigned int i=0; i<10; i++)
+	std::cout << "Beginning write." << std::endl;
 	while(reader.Next())
 	{
 		reader.Next();
