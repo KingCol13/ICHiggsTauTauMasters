@@ -1,6 +1,6 @@
 /*
 Compile:
-g++ makeBinaryDataset.cpp -I /home/kingsley/anaconda3/envs/htt/include -L /home/kingsley/anaconda3/envs/htt/lib -lCore -lRIO -lTree -lTreePlayer -std=c++17 -o makeBinaryDataset
+g++ makeBinaryDataset.cpp -O3 -I /home/kingsley/anaconda3/envs/htt/include -L /home/kingsley/anaconda3/envs/htt/lib -lCore -lRIO -lTree -lTreePlayer -std=c++17 -o makeBinaryDataset
 
 modify path after -I and -L for root Include and lib directories accordingly
 linker libs:
@@ -33,8 +33,9 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 	
-	int tau_dm_1 = std::stoi(argv[1]);
-	int tau_dm_2 = std::stoi(argv[2]);
+	const int tau_dm_1 = std::stoi(argv[1]);
+	const int tau_dm_2 = std::stoi(argv[2]);
+	const int numVariables = argc - 3;
 	
 	std::cout << "Using tau_dm_1 = " << tau_dm_1 << std::endl;
 	std::cout << "Using tau_dm_2 = " << tau_dm_2 << std::endl;
@@ -92,10 +93,19 @@ int main(int argc, char *argv[])
 	int numEntriesSelected = 0;
 	int numEntriesSeen = 0;
 	
+	TTree* ntupleTree = (TTree*) inFile->Get("ntuple");
+	const unsigned int numEntries = ntupleTree->GetEntries();
+	double variables[numVariables];
+	for(unsigned int i=0; i<numVariables; i++)
+	{
+		ntupleTree->SetBranchAddress(argv[i+3], &variables[i]);
+	}
+	
 	//for(unsigned int i=0; i<10; i++)
 	std::cout << "Beginning write." << std::endl;
-	while(reader.Next())
+	for(unsigned int i=0; i<numEntries; i++)
 	{
+		ntupleTree->GetEntry(i);
 		reader.Next();
 		// Selection conditions
 		if( 
@@ -110,9 +120,9 @@ int main(int argc, char *argv[])
 			// Increment entry counter
 			numEntriesSelected++;
 			// loop through values to output
-			for(unsigned int j=0; j<argc-3; j++)
+			for(unsigned int j=0; j<numVariables; j++)
 			{
-				float val = *readerValueVec[j];
+				float val = variables[j];
 				if(std::isnan(val))
 				{
 					std::cout << "Setting NaN at ntuple entry: " << numEntriesSeen << ", key: " << argv[j+3] << " to 0." << std::endl;
