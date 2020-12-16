@@ -88,6 +88,10 @@ int main(int argc, char *argv[])
 	std::ofstream outFile;
 	outFile.open("recordData.dat", std::ios::binary);
 	
+	// Counter for how many entries meet selection criteria
+	int numEntriesSelected = 0;
+	int numEntriesSeen = 0;
+	
 	//for(unsigned int i=0; i<10; i++)
 	std::cout << "Beginning write." << std::endl;
 	while(reader.Next())
@@ -99,19 +103,29 @@ int main(int argc, char *argv[])
 			(*mva_dm_2 == tau_dm_2) &&
 			(*hps_dm_1 == tau_dm_1) &&
 			(*hps_dm_2 == tau_dm_2) &&
-			(*gen_nu_p_1 > -9000)   &&
-			(*gen_nu_p_2 > -9000)
+			(*gen_nu_p_1 > -4000)   &&
+			(*gen_nu_p_2 > -4000)
 		)
 		{
+			// Increment entry counter
+			numEntriesSelected++;
 			// loop through values to output
 			for(unsigned int j=0; j<argc-3; j++)
 			{
 				float val = *readerValueVec[j];
+				if(std::isnan(val))
+				{
+					std::cout << "Setting NaN at ntuple entry: " << numEntriesSeen << ", key: " << argv[j+3] << " to 0." << std::endl;
+					val = 0;
+				}
 				outFile.write( (char *) &val, sizeof(float) );
 			}
 		}
+		numEntriesSeen++;
 	}
 	
+	std::cout << "Number of entries selected: " << numEntriesSelected << std::endl;
+	std::cout << "Total entries seen: " << numEntriesSelected << std::endl;
 	std::cout << "Bytes per entry: " << sizeof(float)*readerValueVec.size() << std::endl;
 	outFile.close();
 	inFile->Close();
