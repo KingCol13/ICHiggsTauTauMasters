@@ -135,9 +135,9 @@ def normalise(x):
     return (x-tf.math.reduce_mean(x, axis=0))/tf.math.reduce_std(x, axis=0)
 
 #add visible product features
-x = tf.convert_to_tensor([pi0_1_lab, pi_1_lab, pi0_2_lab, pi_2_lab, rho_1_lab, rho_2_lab], dtype=tf.float32)
+x = tf.convert_to_tensor([pi0_1_lab, pi_1_lab, pi0_2_lab, pi_2_lab], dtype=tf.float32)
 x = tf.transpose(x, [2, 0, 1])
-x = tf.reshape(x, (x.shape[0], 24))
+x = tf.reshape(x, (x.shape[0], 16))
 
 """
 #invariant masses

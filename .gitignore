@@ -7,3 +7,4 @@
 *.root
 *env/
 makeBinaryDataset
+*.dat
