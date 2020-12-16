@@ -11,14 +11,14 @@ TreePlayer
 
 TODO: 
 -check keys are in file: https://root.cern/manual/storing_root_objects/#finding-tkey-objects
--apply selections
--output to binary
+-get tau decay mode ints from command line
 
 */
 
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <string>
 
 #include "TFile.h"
 #include "TKey.h"
@@ -27,14 +27,17 @@ TODO:
 
 int main(int argc, char *argv[])
 {
-	if(argc<2)
+	if(argc<4)
 	{
-		std::cerr << "Usage: makeBinaryDataset [ntupleKey1] [ntupleKey2] ..." << std::endl;
+		std::cerr << "Usage: makeBinaryDataset [tau_decay_mode_1] [tau_decay_mode_2] [ntupleKey1] [ntupleKey2] ..." << std::endl;
 		return -1;
 	}
 	
-	int tau_dm_1 = 1;
-	int tau_dm_2 = 1;
+	int tau_dm_1 = std::stoi(argv[1]);
+	int tau_dm_2 = std::stoi(argv[2]);
+	
+	std::cout << "Using tau_dm_1 = " << tau_dm_1 << std::endl;
+	std::cout << "Using tau_dm_2 = " << tau_dm_2 << std::endl;
 	
 	// Open file and make sure it isn't borked
 	auto inFile = TFile::Open("MVAFILE_AllHiggs_tt.root");
@@ -44,23 +47,21 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 	
-	/*
-	TODO: check argv keys are in NTuple
+	//TODO: check argv keys are in NTuple
 	// Make sure all keys are in file
-	TIter next(inFile->GetListOfKeys());
-	TKey *key;
-	while((key)=(TKey*)next())
-	{
-		std::cout << "Key: " << key->GetName() << " has objects of class: " << key->GetSeekKey() << std::endl;
-	}
-	*/
+	//TIter next(inFile->GetListOfKeys());
+	//TKey *key;
+	//while((key)=(TKey*)next())
+	//{
+	//	std::cout << "Key: " << key->GetName() << " has objects of class: " << key->GetSeekKey() << std::endl;
+	//}
 	
 	// Make the reader object to iterate over
 	TTreeReader reader("ntuple", inFile);
 	
 	// Make output value readers bound to the reader
 	std::vector<TTreeReaderValue<double>> readerValueVec;
-	for(unsigned int i=1; i<argc; i++)
+	for(unsigned int i=3; i<argc; i++)
 	{
 		readerValueVec.emplace_back(reader, argv[i]);
 	}
@@ -94,7 +95,7 @@ int main(int argc, char *argv[])
 		)
 		{
 			// loop through values to output
-			for(unsigned int j=0; j<argc-1; j++)
+			for(unsigned int j=0; j<argc-3; j++)
 			{
 				float val = *readerValueVec[j];
 				outFile.write( (char *) &val, sizeof(float) );
