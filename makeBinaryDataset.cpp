@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 	TTreeReaderValue<double> gen_nu_p_2(reader, "gen_nu_p_2");
 	
 	// Binary file stream for output
-	std::fstream outFile;
+	std::ofstream outFile;
 	outFile.open("recordData.dat", std::ios::binary);
 	
 	//for(unsigned int i=0; i<10; i++)
