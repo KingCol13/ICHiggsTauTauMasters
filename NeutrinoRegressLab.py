@@ -45,7 +45,7 @@ neutrino_features = [  "gen_nu_p_1", "gen_nu_p_2",
                        "gen_nu_phi_1", "gen_nu_phi_2",
                        "gen_nu_eta_1", "gen_nu_eta_2"]
 
-met_features = ["met", "metx", "mety"]#, "metcov00", "metcov01", "metcov10", "metcov11"]
+met_features = ["met", "metx", "mety"]#, "metCov00", "metCov01", "metCov10", "metCov11"]
 
 sv_features = ["sv_x_1", "sv_y_1", "sv_z_1",
                "sv_x_2", "sv_y_2", "sv_z_2"]
