@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 	std::vector<TTreeReaderValue<double>> readerValueVec;
 	TTree *myTree = (TTree *) inFile->Get("ntuple");
 	
-	for(unsigned int i=3; i<argc; i++)
+	for(int i=3; i<argc; i++)
 	{
 		// First check the key is valid
 		if(myTree->GetLeaf(argv[i])==nullptr)
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 			// Increment entry counter
 			numEntriesSelected++;
 			// loop through values to output
-			for(unsigned int j=0; j<argc-3; j++)
+			for(int j=0; j<argc-3; j++)
 			{
 				float val = *readerValueVec[j];
 				if(std::isnan(val))
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 	}
 	
 	std::cout << "Number of entries selected: " << numEntriesSelected << std::endl;
-	std::cout << "Total entries seen: " << numEntriesSelected << std::endl;
+	std::cout << "Total entries seen: " << numEntriesSeen << std::endl;
 	std::cout << "Bytes per entry: " << sizeof(float)*readerValueVec.size() << std::endl;
 	outFile.close();
 	inFile->Close();
