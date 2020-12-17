@@ -99,6 +99,9 @@ dataset = dataset.batch(batch_size)
 
 dataset = dataset.map(tuples_for_keras)
 
+dataset = dataset.cache()
+dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+
 #%% Build model
 
 model = tf.keras.models.Sequential([
@@ -146,7 +149,7 @@ plt.ylabel("Frequency")
 #plt.xlim(-100, 100)
 #plt.xlim(-5, 5)
 plt.hist(res[:,0], bins = 100, alpha = 0.5, label="phi_1 mean={:.2f}, std={:.2f}".format(np.mean(res[:,0]), np.std(res[:,0])))
-plt.hist(res[:,1], bins = 100, alpha = 0.5, label="phi_1 mean={:.2f}, std={:.2f}".format(np.mean(res[:,1]), np.std(res[:,1])))
+plt.hist(res[:,1], bins = 100, alpha = 0.5, label="phi_2 mean={:.2f}, std={:.2f}".format(np.mean(res[:,1]), np.std(res[:,1])))
 plt.grid()
 plt.legend(loc="upper right")
 plt.show()

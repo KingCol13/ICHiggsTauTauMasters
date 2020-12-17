@@ -62,8 +62,8 @@ int main(int argc, char *argv[])
 	for(int i=3; i<argc; i++)
 	{
 		bool metVal = false;
-		// Tolerate metcov instead of metCov
-		if(strncmp(argv[i], "metcov", 6)==0)
+		// Tolerate metCov instead of metcov
+		if( (strncmp(argv[i], "metcov", 6)==0) || (strncmp(argv[i], "metCov", 6)==0) )
 		{
 			argv[i][3] = 'C';
 			metVal = true;
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
 	
 	std::cout << "Number of entries selected: " << numEntriesSelected << std::endl;
 	std::cout << "Total entries seen: " << numEntriesSeen << std::endl;
-	std::cout << "Bytes per entry: " << sizeof(float)*readerValueVec.size() << std::endl;
+	std::cout << "Bytes per entry: " << sizeof(float)*(numMetVariables+numNormalVariables) << std::endl;
 	outFile.close();
 	inFile->Close();
 	
