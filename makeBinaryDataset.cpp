@@ -1,6 +1,6 @@
 /*
 Compile:
-g++ makeBinaryDataset.cpp -O3 -I /home/kingsley/anaconda3/envs/htt/include -L /home/kingsley/anaconda3/envs/htt/lib -lCore -lRIO -lTree -lTreePlayer -std=c++17 -o makeBinaryDataset
+g++ makeBinaryDataset.cpp -O3 -Wall -I /home/kingsley/anaconda3/envs/htt/include -L /home/kingsley/anaconda3/envs/htt/lib -lCore -lRIO -lTree -lTreePlayer -std=c++17 -o makeBinaryDataset
 
 modify path after -I and -L for root Include and lib directories accordingly
 linker libs:
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 	std::vector<TTreeReaderValue<double>> readerValueVec;
 	TTree *myTree = (TTree *) inFile->Get("ntuple");
 	
-	for(unsigned int i=3; i<argc; i++)
+	for(int i=3; i<argc; i++)
 	{
 		// First check the key is valid
 		if(myTree->GetLeaf(argv[i])==nullptr)
@@ -94,16 +94,17 @@ int main(int argc, char *argv[])
 	int numEntriesSeen = 0;
 	
 	TTree* ntupleTree = (TTree*) inFile->Get("ntuple");
-	const unsigned int numEntries = ntupleTree->GetEntries();
+	const long long numEntries = ntupleTree->GetEntries();
+	std::cout << ".root has " << numEntries << " entries." << std::endl;
 	double variables[numVariables];
-	for(unsigned int i=0; i<numVariables; i++)
+	for(int i=0; i<numVariables; i++)
 	{
 		ntupleTree->SetBranchAddress(argv[i+3], &variables[i]);
 	}
 	
 	//for(unsigned int i=0; i<10; i++)
 	std::cout << "Beginning write." << std::endl;
-	for(unsigned int i=0; i<numEntries; i++)
+	for(long long i=0; i<numEntries; i++)
 	{
 		ntupleTree->GetEntry(i);
 		reader.Next();
@@ -120,12 +121,12 @@ int main(int argc, char *argv[])
 			// Increment entry counter
 			numEntriesSelected++;
 			// loop through values to output
-			for(unsigned int j=0; j<numVariables; j++)
+			for(int j=0; j<numVariables; j++)
 			{
 				float val = variables[j];
 				if(std::isnan(val))
 				{
-					std::cout << "Setting NaN at ntuple entry: " << numEntriesSeen << ", key: " << argv[j+3] << " to 0." << std::endl;
+					std::cout << "Setting NaN at ntuple entry: " << i << ", key: " << argv[j+3] << " to 0." << std::endl;
 					val = 0;
 				}
 				outFile.write( (char *) &val, sizeof(float) );
@@ -135,7 +136,7 @@ int main(int argc, char *argv[])
 	}
 	
 	std::cout << "Number of entries selected: " << numEntriesSelected << std::endl;
-	std::cout << "Total entries seen: " << numEntriesSelected << std::endl;
+	std::cout << "Total entries seen: " << numEntriesSeen << std::endl;
 	std::cout << "Bytes per entry: " << sizeof(float)*readerValueVec.size() << std::endl;
 	outFile.close();
 	inFile->Close();
