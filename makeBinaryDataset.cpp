@@ -96,7 +96,6 @@ int main(int argc, char *argv[])
 	std::cout << "Beginning write." << std::endl;
 	while(reader.Next())
 	{
-		reader.Next();
 		// Selection conditions
 		if( 
 			(*mva_dm_1 == tau_dm_1) &&
