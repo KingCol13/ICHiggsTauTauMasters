@@ -47,43 +47,32 @@ int main(int argc, char *argv[])
 		std::cerr << "File didn't load correctly." << std::endl;
 		return -1;
 	}
-	
-	//TODO: check argv keys are in NTuple
-	// Make sure all keys are in file
-	//TIter next(inFile->GetListOfKeys());
-	//TKey *key;
-	//while((key)=(TKey*)next())
-	//{
-	//	std::cout << "Key: " << key->GetName() << " has objects of class: " << key->GetSeekKey() << std::endl;
-	//}
-	
-	// Make the reader object to iterate over
-	TTreeReader reader("ntuple", inFile);
 
-	// Make output value readers bound to the reader
-	std::vector<TTreeReaderValue<double>> readerValueVec;
 	TTree *myTree = (TTree *) inFile->Get("ntuple");
 	
+	// Check all branch keys are valid
 	for(int i=3; i<argc; i++)
 	{
-		// First check the key is valid
 		if(myTree->GetLeaf(argv[i])==nullptr)
 		{
 			std::cerr << "Key \"" << argv[i] << "\" is not valid, exiting." << std::endl;
 			return -1;
 		}
-		readerValueVec.emplace_back(reader, argv[i]);
 	}
 	
-	// Make selector value readers bound to the reader
-	// Tau decay mode selectors:
-	TTreeReaderValue<int> mva_dm_1(reader, "mva_dm_1");
-	TTreeReaderValue<int> mva_dm_2(reader, "mva_dm_1");
-	TTreeReaderValue<int> hps_dm_1(reader, "tau_decay_mode_1");
-	TTreeReaderValue<int> hps_dm_2(reader, "tau_decay_mode_2");
-	// Neutrino momenta selectors:
-	TTreeReaderValue<double> gen_nu_p_1(reader, "gen_nu_p_1");
-	TTreeReaderValue<double> gen_nu_p_2(reader, "gen_nu_p_2");
+	// Set selector branch addresses
+	int mva_dm_1;
+	int mva_dm_2;
+	int hps_dm_1;
+	int hps_dm_2;
+	float gen_nu_p_1;
+	float gen_nu_p_2;
+	ntupleTree->SetBranchAddress("mva_dm_1", &mva_dm_1);
+	ntupleTree->SetBranchAddress("mva_dm_2", &mva_dm_2);
+	ntupleTree->SetBranchAddress("tau_decay_mode_1", &hps_dm_1);
+	ntupleTree->SetBranchAddress("tau_decay_mode_2", &hps_dm_2);
+	ntupleTree->SetBranchAddress("gen_nu_p_1", &gen_nu_p_1);
+	ntupleTree->SetBranchAddress("gen_nu_p_2", &gen_nu_p_2);
 	
 	// Binary file stream for output
 	std::ofstream outFile;
@@ -107,15 +96,14 @@ int main(int argc, char *argv[])
 	for(long long i=0; i<numEntries; i++)
 	{
 		ntupleTree->GetEntry(i);
-		reader.Next();
 		// Selection conditions
 		if( 
-			(*mva_dm_1 == tau_dm_1) &&
-			(*mva_dm_2 == tau_dm_2) &&
-			(*hps_dm_1 == tau_dm_1) &&
-			(*hps_dm_2 == tau_dm_2) &&
-			(*gen_nu_p_1 > -4000)   &&
-			(*gen_nu_p_2 > -4000)
+			(mva_dm_1 == tau_dm_1) &&
+			(mva_dm_2 == tau_dm_2) &&
+			(hps_dm_1 == tau_dm_1) &&
+			(hps_dm_2 == tau_dm_2) &&
+			(gen_nu_p_1 > -4000)   &&
+			(gen_nu_p_2 > -4000)
 		)
 		{
 			// Increment entry counter
