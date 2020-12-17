@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 	// Make selector value readers bound to the reader
 	// Tau decay mode selectors:
 	TTreeReaderValue<int> mva_dm_1(reader, "mva_dm_1");
-	TTreeReaderValue<int> mva_dm_2(reader, "mva_dm_1");
+	TTreeReaderValue<int> mva_dm_2(reader, "mva_dm_2");
 	TTreeReaderValue<int> hps_dm_1(reader, "tau_decay_mode_1");
 	TTreeReaderValue<int> hps_dm_2(reader, "tau_decay_mode_2");
 	// Neutrino momenta selectors:
