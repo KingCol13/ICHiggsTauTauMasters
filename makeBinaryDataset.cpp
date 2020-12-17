@@ -9,6 +9,8 @@ RIO
 Tree
 TreePlayer
 
+Note metcov variables are treated specially (they are leaf lists) and so will be the first variables of each entry in the binary dataset
+
 TODO: 
 -check keys are in file: https://root.cern/manual/storing_root_objects/#finding-tkey-objects
 -get tau decay mode ints from command line
@@ -18,6 +20,7 @@ TODO:
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <cstring>
 #include <string>
 
 #include "TFile.h"
@@ -47,37 +50,56 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 	
-	//TODO: check argv keys are in NTuple
-	// Make sure all keys are in file
-	//TIter next(inFile->GetListOfKeys());
-	//TKey *key;
-	//while((key)=(TKey*)next())
-	//{
-	//	std::cout << "Key: " << key->GetName() << " has objects of class: " << key->GetSeekKey() << std::endl;
-	//}
-	
 	// Make the reader object to iterate over
 	TTreeReader reader("ntuple", inFile);
 
 	// Make output value readers bound to the reader
 	std::vector<TTreeReaderValue<double>> readerValueVec;
-	TTree *myTree = (TTree *) inFile->Get("ntuple");
+	std::vector<TTreeReaderValue<float>> metValueVec;
 	
-	for(unsigned int i=3; i<argc; i++)
+	TTree *myTree = (TTree *) inFile->Get("ntuple");
+	// Check key is valid then bind a reader
+	for(int i=3; i<argc; i++)
 	{
-		// First check the key is valid
+		bool metVal = false;
+		// Tolerate metCov instead of metcov
+		if( (strncmp(argv[i], "metcov", 6)==0) || (strncmp(argv[i], "metCov", 6)==0) )
+		{
+			argv[i][3] = 'C';
+			metVal = true;
+		}
+		
+		// Check the key is valid
 		if(myTree->GetLeaf(argv[i])==nullptr)
 		{
-			std::cerr << "Key \"" << argv[i] << "\" is not valid, exiting." << std::endl;
+			std::cerr << "Key \"" << argv[i] << "\" is not a valid leaf, exiting." << std::endl;
 			return -1;
 		}
-		readerValueVec.emplace_back(reader, argv[i]);
+		// If it was a met variable then deal with leaflist nonsense
+		if( metVal )
+		{
+			std::string metName = "metcov";
+			metName+=argv[i][6];
+			metName+=argv[i][7];
+			metName+=".metCov";
+			metName+=argv[i][6];
+			metName+=argv[i][7];
+			std::cout << "Binding: " << metName << std::endl;
+			metValueVec.emplace_back(reader, metName.c_str());
+		}
+		else // Other variables are simple
+		{
+			readerValueVec.emplace_back(reader, argv[i]);
+		}
 	}
+	
+	const int numNormalVariables = readerValueVec.size();
+	const int numMetVariables = metValueVec.size();
 	
 	// Make selector value readers bound to the reader
 	// Tau decay mode selectors:
 	TTreeReaderValue<int> mva_dm_1(reader, "mva_dm_1");
-	TTreeReaderValue<int> mva_dm_2(reader, "mva_dm_1");
+	TTreeReaderValue<int> mva_dm_2(reader, "mva_dm_2");
 	TTreeReaderValue<int> hps_dm_1(reader, "tau_decay_mode_1");
 	TTreeReaderValue<int> hps_dm_2(reader, "tau_decay_mode_2");
 	// Neutrino momenta selectors:
@@ -96,7 +118,6 @@ int main(int argc, char *argv[])
 	std::cout << "Beginning write." << std::endl;
 	while(reader.Next())
 	{
-		reader.Next();
 		// Selection conditions
 		if( 
 			(*mva_dm_1 == tau_dm_1) &&
@@ -109,8 +130,21 @@ int main(int argc, char *argv[])
 		{
 			// Increment entry counter
 			numEntriesSelected++;
-			// loop through values to output
-			for(unsigned int j=0; j<argc-3; j++)
+			
+			// loop through met variables to output
+			for(int j=0; j<numMetVariables; j++)
+			{
+				float val = *metValueVec[j];
+				if(std::isnan(val))
+				{
+					std::cout << "Setting NaN at ntuple entry: " << numEntriesSeen << ", key: " << argv[j+3] << " to 0." << std::endl;
+					val = 0;
+				}
+				outFile.write( (char *) &val, sizeof(float) );
+			}
+			
+			// loop through normal variables to output
+			for(int j=0; j<numNormalVariables; j++)
 			{
 				float val = *readerValueVec[j];
 				if(std::isnan(val))
@@ -125,8 +159,8 @@ int main(int argc, char *argv[])
 	}
 	
 	std::cout << "Number of entries selected: " << numEntriesSelected << std::endl;
-	std::cout << "Total entries seen: " << numEntriesSelected << std::endl;
-	std::cout << "Bytes per entry: " << sizeof(float)*readerValueVec.size() << std::endl;
+	std::cout << "Total entries seen: " << numEntriesSeen << std::endl;
+	std::cout << "Bytes per entry: " << sizeof(float)*(numMetVariables+numNormalVariables) << std::endl;
 	outFile.close();
 	inFile->Close();
 	

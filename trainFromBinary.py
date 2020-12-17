@@ -44,25 +44,21 @@ target = [  "gen_nu_p_1", "gen_nu_p_2",
 """
 target = ["gen_nu_phi_1", "gen_nu_phi_2"]
 
-met_features = ["met", "metx", "mety"]#, "metcov00", "metcov01", "metcov10", "metcov11"]
+met_features = ["met", "metx", "mety"]#, "metCov00", "metCov01", "metCov10", "metCov11"]
 
 sv_features = ["sv_x_1", "sv_y_1", "sv_z_1",
-               "sv_x_2", "sv_y_2", "sv_z_2"]
-"""
+               "sv_x_2", "sv_y_2", "sv_z_2"
                "svcov00_1", "svcov01_1", "svcov02_1",
                "svcov10_1", "svcov11_1", "svcov12_1",
                "svcov20_1", "svcov21_1", "svcov22_1",
                "svcov00_2", "svcov01_2", "svcov02_2",
                "svcov10_2", "svcov11_2", "svcov12_2",
                "svcov20_2", "svcov21_2", "svcov22_2"]
-"""
     
-ip_features = ["ip_x_1", "ip_y_1", "ip_z_1", "ip_x_2", "ip_y_2", "ip_z_2"]
-"""
+ip_features = ["ip_x_1", "ip_y_1", "ip_z_1", "ip_x_2", "ip_y_2", "ip_z_2",
                "ipcov00_1", "ipcov01_1", "ipcov02_1", "ipcov10_1", "ipcov11_1", "ipcov12_1",
                "ipcov20_1", "ipcov21_1", "ipcov22_1", "ipcov00_2", "ipcov01_2", "ipcov02_2",
                "ipcov10_2", "ipcov11_2", "ipcov12_2", "ipcov20_2", "ipcov21_2", "ipcov22_2"]
-"""
 
 tau_decay_mode_1 = 1
 tau_decay_mode_2 = 1
@@ -103,6 +99,9 @@ dataset = dataset.batch(batch_size)
 
 dataset = dataset.map(tuples_for_keras)
 
+dataset = dataset.cache()
+dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+
 #%% Build model
 
 model = tf.keras.models.Sequential([
@@ -139,7 +138,7 @@ true_vals = []
 for element in it:
     true_vals.append(element[1])
 
-true_vals = np.vstack(true_vals_arr)
+true_vals = np.vstack(true_vals)
 
 res = model.predict(dataset) - true_vals
 
@@ -150,7 +149,7 @@ plt.ylabel("Frequency")
 #plt.xlim(-100, 100)
 #plt.xlim(-5, 5)
 plt.hist(res[:,0], bins = 100, alpha = 0.5, label="phi_1 mean={:.2f}, std={:.2f}".format(np.mean(res[:,0]), np.std(res[:,0])))
-plt.hist(res[:,1], bins = 100, alpha = 0.5, label="phi_1 mean={:.2f}, std={:.2f}".format(np.mean(res[:,1]), np.std(res[:,1])))
+plt.hist(res[:,1], bins = 100, alpha = 0.5, label="phi_2 mean={:.2f}, std={:.2f}".format(np.mean(res[:,1]), np.std(res[:,1])))
 plt.grid()
 plt.legend(loc="upper right")
 plt.show()
