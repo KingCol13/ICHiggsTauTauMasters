@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
 			std::cerr << "Key \"" << argv[i] << "\" is not a valid leaf, exiting." << std::endl;
 			return -1;
 		}
+		
 		// If it was a met variable then deal with leaflist nonsense
 		if( metVal )
 		{

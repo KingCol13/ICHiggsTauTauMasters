@@ -44,7 +44,8 @@ target = [  "gen_nu_p_1", "gen_nu_p_2",
 """
 target = ["gen_nu_phi_1", "gen_nu_phi_2"]
 
-met_features = ["met", "metx", "mety"]#, "metCov00", "metCov01", "metCov10", "metCov11"]
+met_features = ["met", "metx", "mety"]
+met_cov      = ["metCov00", "metCov01", "metCov10", "metCov11"]
 
 sv_features = ["sv_x_1", "sv_y_1", "sv_z_1",
                "sv_x_2", "sv_y_2", "sv_z_2"
@@ -106,8 +107,8 @@ dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
 model = tf.keras.models.Sequential([
     tf.keras.layers.Input(shape=(num_features,)),
-    tf.keras.layers.Dense(64, activation="relu"),
-    tf.keras.layers.Dense(64, activation="relu"),
+    tf.keras.layers.Dense(300, activation="relu"),
+    tf.keras.layers.Dense(300, activation="relu"),
     tf.keras.layers.Dense(num_targets)
 ])
 
@@ -119,7 +120,7 @@ model.compile(optimizer=opt,
 
 #%% Training model
 
-history = model.fit(x=dataset, epochs=5)
+history = model.fit(x=dataset, epochs=25)
 
 #plot traning
 plt.figure()
@@ -130,7 +131,7 @@ plt.ylabel("Loss")
 plt.legend()
 plt.show()
 
-#%% Histograms
+#%% Results
 
 #Append each batch true values to list then vstack them
 it = dataset.as_numpy_iterator()
@@ -140,14 +141,17 @@ for element in it:
 
 true_vals = np.vstack(true_vals)
 
+#%% Histograms
+
 res = model.predict(dataset) - true_vals
+res[res < -10] = -5
+res[res > 10] = 5
 
 plt.figure()
 plt.title("NN Predicted Minus True Phi")
 plt.xlabel("Phi / Radians")
 plt.ylabel("Frequency")
 #plt.xlim(-100, 100)
-#plt.xlim(-5, 5)
 plt.hist(res[:,0], bins = 100, alpha = 0.5, label="phi_1 mean={:.2f}, std={:.2f}".format(np.mean(res[:,0]), np.std(res[:,0])))
 plt.hist(res[:,1], bins = 100, alpha = 0.5, label="phi_2 mean={:.2f}, std={:.2f}".format(np.mean(res[:,1]), np.std(res[:,1])))
 plt.grid()
