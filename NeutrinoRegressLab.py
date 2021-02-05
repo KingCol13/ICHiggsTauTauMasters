@@ -158,7 +158,7 @@ plt.show()
 
 #%% Histograms
 
-res = np.array((model(x_eval) - y_eval)*y_std + y_mu)
+res = np.array((model(x_eval) - y_eval)*y_std + y_mu, dtype=np.float64)
 
 plt.figure()
 plt.title("NN Predicted Minus True p")
@@ -201,7 +201,7 @@ plt.show()
 del df_eval['sv_x_1'], df_eval['sv_y_1'], df_eval['sv_z_1']
 del df_eval['sv_x_2'], df_eval['sv_y_2'], df_eval['sv_z_2']
 
-res = np.array(model(x_eval)*y_std + y_mu)
+res = np.array(model(x_eval)*y_std + y_mu, dtype=np.float64)
 df_eval['reco_nu_p_1'] = res[:,0]
 df_eval['reco_nu_p_2'] = res[:,1]
 df_eval['reco_nu_phi_1'] = res[:,2]
@@ -210,8 +210,6 @@ df_eval['reco_nu_eta_1'] = res[:,4]
 df_eval['reco_nu_eta_2'] = res[:,5]
 
 #%%  Write root file
-
-rootfile = uproot.recreate("example.root")
 
 treeBranches = {column : str(df_eval[column].dtypes) for column in df_eval}
 branchDict = {column : np.array(df_eval[column]) for column in df_eval}
