@@ -28,7 +28,7 @@ if gpus:
     print(e)
 #%% Data loading
 
-tree = uproot.open("MVAFILE_AllHiggs_tt.root")["ntuple"]
+tree = uproot.open("ROOTfiles/MVAFILE_AllHiggs_tt_pseudo.root")["ntuple"]
 
 momenta_features = [ "pi_E_1", "pi_px_1", "pi_py_1", "pi_pz_1", #leading charged pi 4-momentum
               "pi_E_2", "pi_px_2", "pi_py_2", "pi_pz_2", #subleading charged pi 4-momentum
@@ -82,101 +82,42 @@ df = df[
 df = df[df["gen_nu_p_1"] > -4000]
 df = df[df["gen_nu_p_2"] > -4000]
 
-#%% Create momenta and boost
+#%% Clean up data
 
-# Create our 4-vectors in the lab frame
-pi_1_lab = Momentum4(df["pi_E_1"], df["pi_px_1"], df["pi_py_1"], df["pi_pz_1"])
-pi_2_lab = Momentum4(df["pi_E_2"], df["pi_px_2"], df["pi_py_2"], df["pi_pz_2"])
+feature_quantities = momenta_features+met_features+sv_features+ip_features
+target_quantities = neutrino_features
 
-pi0_1_lab = Momentum4(df["pi0_E_1"], df["pi0_px_1"], df["pi0_py_1"], df["pi0_pz_1"])
-pi0_2_lab = Momentum4(df["pi0_E_2"], df["pi0_px_2"], df["pi0_py_2"], df["pi0_pz_2"])
-
-rho_1_lab = pi_1_lab + pi0_1_lab
-rho_2_lab = pi_2_lab + pi0_2_lab
-
-#Neutrinos
-nu_1_lab = Momentum4.e_m_eta_phi(df["gen_nu_p_1"], 0, df["gen_nu_eta_1"], df["gen_nu_phi_1"])
-nu_2_lab = Momentum4.e_m_eta_phi(df["gen_nu_p_2"], 0, df["gen_nu_eta_2"], df["gen_nu_phi_2"])
-
-#met, ip, sv
-df_len = len(df)
-zeros = np.zeros(df_len)
-met_lab =  Position4(zeros, df['metx']  ,df['mety']  , zeros)
-#sv_1_lab = Position4(zeros, df['sv_x_1'], df['sv_y_1'], df['sv_z_1'])
-#sv_2_lab = Position4(zeros, df['sv_x_2'], df['sv_y_2'], df['sv_z_2'])
-ip_1_lab = Position4(zeros,  df['ip_x_1'], df['ip_y_1'], df['ip_z_1'])
-ip_2_lab = Position4(zeros,  df['ip_x_2'], df['ip_y_2'], df['ip_z_2'])
-
-# Find the boost to visible product ZNF
-zmf_momentum = pi_1_lab + pi_2_lab + pi0_1_lab + pi0_2_lab
-boost = Momentum4(zmf_momentum[0], -zmf_momentum[1], -zmf_momentum[2], -zmf_momentum[3])
-
-# Calculate 4-vectors in the ZMF
-pi_1_ZMF = pi_1_lab.boost_particle(boost)
-pi_2_ZMF = pi_2_lab.boost_particle(boost)
-
-pi0_1_ZMF = pi0_1_lab.boost_particle(boost)
-pi0_2_ZMF = pi0_2_lab.boost_particle(boost)
-
-nu_1_ZMF = nu_1_lab.boost_particle(boost)
-nu_2_ZMF = nu_2_lab.boost_particle(boost)
-
-met_ZMF = met_lab.boost_particle(boost)
-#sv_1_ZMF = sv_1_lab.boost_particle(boost)
-#sv_2_ZMF = sv_2_lab.boost_particle(boost)
-ip_1_ZMF = ip_1_lab.boost_particle(boost)
-ip_2_ZMF = ip_2_lab.boost_particle(boost)
-
-print("Boosted particles.")
+df = df.dropna(subset=feature_quantities+target_quantities)
 
 #%% Features and targets
 
 def normalise(x):
-    return (x-tf.math.reduce_mean(x, axis=0))/tf.math.reduce_std(x, axis=0)
+    mu = tf.math.reduce_mean(x, axis=0)
+    std = tf.math.reduce_std(x, axis=0)
+    return (x-mu)/std, mu, std
 
-#add visible product features
-x = tf.convert_to_tensor([pi0_1_lab, pi_1_lab, pi0_2_lab, pi_2_lab], dtype=tf.float32)
-x = tf.transpose(x, [2, 0, 1])
-x = tf.reshape(x, (x.shape[0], 16))
-
-"""
-#invariant masses
-mass_features = np.real([pi0_1_lab.m, pi_1_lab.m, pi0_2_lab.m, pi_2_lab.m, rho_1_lab.m, rho_2_lab.m])
-mass_features = tf.convert_to_tensor(mass_features, dtype=tf.float32)
-mass_features = tf.transpose(mass_features, [1, 0])
-x = tf.concat([x, mass_features], axis=1)
-"""
-
-
-
-#add met features
-x = tf.concat([x, tf.convert_to_tensor(df[met_features], dtype=tf.float32)], axis=1)
-
-#add sv features
-#x = tf.concat([x, tf.convert_to_tensor(df[sv_features], dtype=tf.float32)], axis=1)
-
-#add ip features
-x = tf.concat([x, tf.convert_to_tensor(df[ip_features], dtype=tf.float32)], axis=1)
+#add visible product, met, sv, ip features
+x = tf.convert_to_tensor(df[feature_quantities], dtype=tf.float32)
 
 #y = tf.convert_to_tensor(df[neutrino_features], dtype=tf.float32)
-y = tf.convert_to_tensor([nu_1_lab.phi, nu_2_lab.phi], dtype=tf.float32)
-y = tf.transpose(y, [1, 0])
+y = tf.convert_to_tensor(df[neutrino_features], dtype=tf.float32)
 
 #normalise
-#x = normalise(x)
-#y = normalise(y)
+x, x_mu, x_std = normalise(x)
+y, y_mu, y_std = normalise(y)
 
 #remove NaNs, TODO: improve this
 x = tf.where(tf.math.is_nan(x), 0, x)
 
 #%% Prototype on reduced dataset and split:
+
 """
-prototype_num = 100000
+prototype_num = 10000
 x = x[:prototype_num]
 y = y[:prototype_num]
 """
 
-trainFrac = 0.7
+trainFrac = 0.5
 numTrain = int(trainFrac*x.shape[0])
 x_train = x[:numTrain]
 y_train = y[:numTrain]
@@ -195,7 +136,7 @@ model = tf.keras.models.Sequential([
     #tf.keras.layers.Dense(200, activation="relu"),
     #tf.keras.layers.Dense(200, activation="relu"),
     #tf.keras.layers.Dropout(0.3),
-    tf.keras.layers.Dense(2)
+    tf.keras.layers.Dense(6)
 ])
 
 opt = tf.keras.optimizers.Adam(0.001)
@@ -209,7 +150,9 @@ print("Model compiled.")
 
 #%% Training model
 
-history = model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=5)
+history = model.fit(x_train, y_train, validation_split=0.2, epochs=5)
+
+#%%
 
 #plot traning
 plt.figure()
@@ -229,7 +172,7 @@ plt.title("NN Predicted Minus True Phi")
 plt.xlabel("Phi / Radians")
 plt.ylabel("Frequency")
 #plt.xlim(-100, 100)
-#plt.xlim(-5, 5)
+plt.xlim(-5, 5)
 plt.hist(res[:,0], bins = 100, alpha = 0.5, label="phi_1 mean={:.2f}, std={:.2f}".format(np.mean(res[:,0]), np.std(res[:,0])))
 plt.hist(res[:,1], bins = 100, alpha = 0.5, label="phi_1 mean={:.2f}, std={:.2f}".format(np.mean(res[:,1]), np.std(res[:,1])))
 plt.grid()
