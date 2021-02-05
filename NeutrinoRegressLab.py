@@ -78,16 +78,20 @@ df = df[
     & (df["mva_dm_2"] == 1)
 ]
 
-#Filter out -9999 values for neutrino momenta
-df = df[df["gen_nu_p_1"] > -4000]
-df = df[df["gen_nu_p_2"] > -4000]
-
 #%% Clean up data
 
 feature_quantities = momenta_features+met_features+sv_features+ip_features
 target_quantities = neutrino_features
 
+#Filter out -9999 values for neutrino momenta
+df = df[df["gen_nu_p_1"] > -4000]
+df = df[df["gen_nu_p_2"] > -4000]
 df = df.dropna(subset=feature_quantities+target_quantities)
+
+#%% train/eval split:
+
+trainFrac = 0.5
+df_train, df_eval = np.split(df, [int(trainFrac*len(df))], axis=0)
 
 #%% Features and targets
 
@@ -97,33 +101,22 @@ def normalise(x):
     return (x-mu)/std, mu, std
 
 #add visible product, met, sv, ip features
-x = tf.convert_to_tensor(df[feature_quantities], dtype=tf.float32)
+x_train = tf.convert_to_tensor(df_train[feature_quantities], dtype=tf.float32)
 
 #y = tf.convert_to_tensor(df[neutrino_features], dtype=tf.float32)
-y = tf.convert_to_tensor(df[neutrino_features], dtype=tf.float32)
+y_train = tf.convert_to_tensor(df_train[neutrino_features], dtype=tf.float32)
+
+#Eval data
+x_eval = tf.convert_to_tensor(df_eval[feature_quantities], dtype=tf.float32)
+y_eval = tf.convert_to_tensor(df_eval[neutrino_features], dtype=tf.float32)
+
 
 #normalise
-x, x_mu, x_std = normalise(x)
-y, y_mu, y_std = normalise(y)
+#x_train, x_mu, x_std = normalise(x_train)
+y_train, y_mu, y_std = normalise(y_train)
+#x_eval, _, _ = normalise(x_eval)
+y_eval, _, _ = normalise(y_eval)
 
-#remove NaNs, TODO: improve this
-x = tf.where(tf.math.is_nan(x), 0, x)
-
-#%% Prototype on reduced dataset and split:
-
-"""
-prototype_num = 10000
-x = x[:prototype_num]
-y = y[:prototype_num]
-"""
-
-trainFrac = 0.5
-numTrain = int(trainFrac*x.shape[0])
-x_train = x[:numTrain]
-y_train = y[:numTrain]
-
-x_val = x[numTrain:]
-y_val = y[numTrain:]
 
 #%% Building network
 
@@ -152,9 +145,8 @@ print("Model compiled.")
 
 history = model.fit(x_train, y_train, validation_split=0.2, epochs=5)
 
-#%%
+#%% plot traning
 
-#plot traning
 plt.figure()
 plt.plot(history.history['mse'], label="Training MSE")
 plt.plot(history.history['val_mse'], label="Validation MSE")
@@ -166,29 +158,65 @@ plt.show()
 
 #%% Histograms
 
-res = np.array(model(x_val) - y_val)
+res = np.array((model(x_eval) - y_eval)*y_std + y_mu)
+
+plt.figure()
+plt.title("NN Predicted Minus True p")
+plt.xlabel("Phi / Radians")
+plt.ylabel("Frequency")
+#plt.xlim(-100, 100)
+plt.hist(res[:,0], bins = 100, alpha = 0.5, label="p_1 mean={:.2f}, std={:.2f}".format(np.mean(res[:,0]), np.std(res[:,0])))
+plt.hist(res[:,1], bins = 100, alpha = 0.5, label="p_2 mean={:.2f}, std={:.2f}".format(np.mean(res[:,1]), np.std(res[:,1])))
+plt.grid()
+plt.legend(loc="upper right")
+plt.show()
+
 plt.figure()
 plt.title("NN Predicted Minus True Phi")
 plt.xlabel("Phi / Radians")
 plt.ylabel("Frequency")
 #plt.xlim(-100, 100)
 plt.xlim(-5, 5)
-plt.hist(res[:,0], bins = 100, alpha = 0.5, label="phi_1 mean={:.2f}, std={:.2f}".format(np.mean(res[:,0]), np.std(res[:,0])))
-plt.hist(res[:,1], bins = 100, alpha = 0.5, label="phi_1 mean={:.2f}, std={:.2f}".format(np.mean(res[:,1]), np.std(res[:,1])))
+plt.hist(res[:,2], bins = 100, alpha = 0.5, label="phi_1 mean={:.2f}, std={:.2f}".format(np.mean(res[:,2]), np.std(res[:,2])))
+plt.hist(res[:,3], bins = 100, alpha = 0.5, label="phi_2 mean={:.2f}, std={:.2f}".format(np.mean(res[:,3]), np.std(res[:,3])))
 plt.grid()
 plt.legend(loc="upper right")
 plt.show()
 
-#%% Scatter plot
-
 plt.figure()
-plt.title("Leading Neutrino Pz")
-plt.xlabel("Prediction / GeV")
-plt.ylabel("True / GeV")
-plt.hist2d(res[:,0], y_val[:,0], 1000)
+plt.title("NN Predicted Minus True Eta")
+plt.xlabel("Phi / Radians")
+plt.ylabel("Frequency")
+#plt.xlim(-100, 100)
+plt.xlim(-5, 5)
+plt.hist(res[:,4], bins = 100, alpha = 0.5, label="eta_1 mean={:.2f}, std={:.2f}".format(np.mean(res[:,4]), np.std(res[:,4])))
+plt.hist(res[:,5], bins = 100, alpha = 0.5, label="eta_2 mean={:.2f}, std={:.2f}".format(np.mean(res[:,5]), np.std(res[:,5])))
+plt.grid()
+plt.legend(loc="upper right")
 plt.show()
 
+#%% Add/remove columns to dataframe
 
-#%% Evaluate
+#TODO: fix sv_variables
+del df_eval['sv_x_1'], df_eval['sv_y_1'], df_eval['sv_z_1']
+del df_eval['sv_x_2'], df_eval['sv_y_2'], df_eval['sv_z_2']
 
-print(tf.math.reduce_mean(tf.math.abs(model(x)-y), axis=0)/tf.math.reduce_std(y, axis=0))
+res = np.array(model(x_eval)*y_std + y_mu)
+df_eval['reco_nu_p_1'] = res[:,0]
+df_eval['reco_nu_p_2'] = res[:,1]
+df_eval['reco_nu_phi_1'] = res[:,2]
+df_eval['reco_nu_phi_2'] = res[:,3]
+df_eval['reco_nu_eta_1'] = res[:,4]
+df_eval['reco_nu_eta_2'] = res[:,5]
+
+#%%  Write root file
+
+rootfile = uproot.recreate("example.root")
+
+treeBranches = {column : str(df_eval[column].dtypes) for column in df_eval}
+branchDict = {column : np.array(df_eval[column]) for column in df_eval}
+tree = uproot.newtree(treeBranches, title="ntuple", compression=uproot.ZLIB(3))
+
+with uproot.recreate("MVAFILE_AllHiggs_tt_reco.root") as f:
+    f["ntuple"] = tree
+    f["ntuple"].extend(branchDict)
