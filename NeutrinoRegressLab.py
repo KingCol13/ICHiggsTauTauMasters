@@ -65,11 +65,11 @@ ip_features = ["ip_x_1", "ip_y_1", "ip_z_1", "ip_x_2", "ip_y_2", "ip_z_2"]
                "ipcov10_2", "ipcov11_2", "ipcov12_2", "ipcov20_2", "ipcov21_2", "ipcov22_2"]
 """
     
-phi_cp_feature = ["gen_phitt"]
+save_features = ["gen_phitt", "wt_cp_sm", "wt_cp_mm", "wt_cp_ps"]
 
 df = tree.pandas.df(momenta_features+target+selectors
                     +neutrino_features+met_features+sv_features+sv_features+ip_features
-                    +phi_cp_feature)
+                    +save_features)
 
 df = df[
       (df["tau_decay_mode_1"] == 1) 

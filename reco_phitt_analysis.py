@@ -15,11 +15,11 @@ import numpy as np
 
 #%% Read data
 
-tree = uproot.open("/mnt/hdd/ROOTFiles/MVAFILE_AllHiggs_tt_pseudo.root")["ntuple"]
+tree = uproot.open("ROOTfiles/MVAFILE_AllHiggs_tt_reco_phitt.root")["ntuple"]
 
 selectors = ['mva_dm_1', 'mva_dm_2']
 
-variables = ["aco_angle_1", "gen_phitt", "pseudo_phitt"]
+variables = ["aco_angle_1", "gen_phitt", "reco_phitt" ] #"pseudo_phitt"]
 
 df = tree.pandas.df(variables+selectors)
 
@@ -33,15 +33,16 @@ df = df.dropna()
 df = df[df['aco_angle_1'] > -400]
 
 #%% Fix shift in data
-#TODO: remove this
+gen_phitt = np.array(df['gen_phitt'])
+aco_angle_1 = np.array(df['aco_angle_1'])
+new_phitt = np.array(df['reco_phitt'])*180/np.pi
+new_phitt = np.where(new_phitt>90, new_phitt-180, new_phitt)
 
-gen_phitt = np.array(df['gen_phitt'])[0:-2]
-pseudo_phitt = np.array(df['pseudo_phitt'])[1:-1]*180/np.pi
-aco_angle_1 = np.array(df['aco_angle_1'])[0:-2]
+wt_cp_sm = np.array(df['wt_cp_sm'])
+wt_cp_mm = np.array(df['wt_cp_mm'])
+wt_cp_ps = np.array(df['wt_cp_ps'])
 
-pseudo_phitt = np.where(pseudo_phitt>90, pseudo_phitt-180, pseudo_phitt)
-
-#%% Plot histograms
+#%% Histograms
 
 plt.figure()
 plt.xlabel("gen_phitt")
@@ -58,7 +59,6 @@ plt.grid()
 plt.show()
 
 plt.figure()
-
 plt.xlabel("pseudo_phitt")
 plt.ylabel("aco_angle_1")
 plt.hist2d(pseudo_phitt, aco_angle_1, 50)
