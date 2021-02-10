@@ -86,7 +86,7 @@ met_covariance_matrices = ["metcov00",
 
 covs = sv_covariance_matrices + ip_covariance_matrices + met_covariance_matrices
 
-variables4=(momenta_features+other_features+target+selectors+additional_info + covs) #copying Kinglsey's way cause it is very clean
+variables4=(momenta_features+other_features+target+selectors)#+additional_info + covs) #copying Kinglsey's way cause it is very clean
 print('Check 1')
 df4 = tree.pandas.df(variables4)
 
