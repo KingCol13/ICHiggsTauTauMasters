@@ -9,5 +9,6 @@
 makeBinaryDataset
 *.dat
 ROOTfiles
-*.csv*
+plots
+*.csv
 *.txt
