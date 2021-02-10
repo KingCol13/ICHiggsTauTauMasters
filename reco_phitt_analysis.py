@@ -166,7 +166,6 @@ xpos, ypos = np.meshgrid(xedges[:-1] + spacing/2, yedges[:-1] + spacing/2, index
 fig = plt.figure()
 ax = plt.axes(projection='3d')
 ax.plot_surface(xpos, ypos, hist,cmap='viridis', edgecolor='none')
-ax.set_title('Surface plot')
 ax.set_xlabel("gen_phitt")
 ax.set_ylabel("pseudo_phitt")
 ax.set_zlabel("frequency")
