@@ -12,6 +12,8 @@ import uproot
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.colors as colors
+import matplotlib.cm as cm
 
 #%% Read data
 
@@ -118,7 +120,22 @@ plt.grid()
 plt.legend(loc="upper right", frameon=False)
 plt.show()
 
-#%% 3d plot 1
+#%% 3d plot 2
+
+x = gen_phitt
+y = new_phitt
+
+hist, xedges, yedges = np.histogram2d(x, y, bins=50, range=[[-90, 90], [-90, 90]])
+zpos = hist.ravel()
+xpos, ypos = np.meshgrid(xedges[:-1] + 0.25, yedges[:-1] + 0.25, indexing="ij")
+
+fig = plt.figure()
+ax = plt.axes(projection='3d')
+ax.plot_surface(xpos, ypos, hist,cmap='viridis', edgecolor='none')
+ax.set_title('Surface plot')
+plt.show()
+
+#%% 3d bars reborn in colour
 
 x = gen_phitt
 y = new_phitt
@@ -143,6 +160,11 @@ zpos = 0
 dx = dy = np.ones_like(zpos)*(xedges[1]-xedges[0])
 dz = hist.ravel()
 
-ax.bar3d(xpos, ypos, zpos, dx, dy, dz, zsort='average')
+offset = dz + np.abs(dz.min())
+fracs = offset.astype(float)/offset.max()
+norm = colors.Normalize(fracs.min(), fracs.max())
+colourmap = cm.jet(norm(fracs.tolist()))
+
+ax.bar3d(xpos, ypos, zpos, dx, dy, dz, zsort='average', color=colourmap)
 
 plt.show()
