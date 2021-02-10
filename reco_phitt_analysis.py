@@ -49,6 +49,8 @@ df = df[(df['mva_dm_1'] == 10) & (df['mva_dm_2'] == 10)]
 #%% Cleanup
 
 df = df.dropna(subset=['gen_phitt', 'pseudo_phitt'])
+#TODO: remove this when new non-logged maxed data comes in
+df = df[(df['pseudo_phitt']<-57.32) | (df['pseudo_phitt']>-57.28)]
 #df = df[df['aco_angle_1'] > -400]
 
 #%% Fix shift in data
@@ -57,13 +59,9 @@ aco_angle_1 = np.array(df['aco_angle_1'])
 new_phitt = np.array(df['pseudo_phitt'])
 new_phitt = np.where(new_phitt>90, new_phitt-180, new_phitt)
 
-#gen_phitt = gen_phitt[:-2]
-#new_phitt = new_phitt[1:-1]
-#aco_angle_1 = aco_angle_1[:-2]
-
-#wt_cp_sm = np.array(df['wt_cp_sm'])
-#wt_cp_mm = np.array(df['wt_cp_mm'])
-#wt_cp_ps = np.array(df['wt_cp_ps'])
+wt_cp_sm = np.array(df['wt_cp_sm'])
+wt_cp_mm = np.array(df['wt_cp_mm'])
+wt_cp_ps = np.array(df['wt_cp_ps'])
 
 #%% Histograms
 
@@ -120,21 +118,6 @@ plt.grid()
 plt.legend(loc="upper right", frameon=False)
 plt.show()
 
-#%% 3d plot 2
-
-x = gen_phitt
-y = new_phitt
-
-hist, xedges, yedges = np.histogram2d(x, y, bins=50, range=[[-90, 90], [-90, 90]])
-zpos = hist.ravel()
-xpos, ypos = np.meshgrid(xedges[:-1] + 0.25, yedges[:-1] + 0.25, indexing="ij")
-
-fig = plt.figure()
-ax = plt.axes(projection='3d')
-ax.plot_surface(xpos, ypos, hist,cmap='viridis', edgecolor='none')
-ax.set_title('Surface plot')
-plt.show()
-
 #%% 3d bars reborn in colour
 
 x = gen_phitt
@@ -143,21 +126,19 @@ y = new_phitt
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
-# Fixing random state for reproducibility
-np.random.seed(19680801)
-#x, y = np.random.rand(2, 100) * 180 - 90
-
 # Get bins using numpy
 hist, xedges, yedges = np.histogram2d(x, y, bins=50, range=[[-90, 90], [-90, 90]])
 
+spacing = xedges[1]-xedges[0]
+
 # Construct arrays for the anchor positions of the 16 bars.
-xpos, ypos = np.meshgrid(xedges[:-1] + 0.25, yedges[:-1] + 0.25, indexing="ij")
+xpos, ypos = np.meshgrid(xedges[:-1] + spacing/2, yedges[:-1] + spacing/2, indexing="ij")
 xpos = xpos.ravel()
 ypos = ypos.ravel()
 zpos = 0
 
 # Construct arrays with the dimensions for the 16 bars.
-dx = dy = np.ones_like(zpos)*(xedges[1]-xedges[0])
+dx = dy = np.ones_like(zpos)*spacing
 dz = hist.ravel()
 
 offset = dz + np.abs(dz.min())
@@ -166,5 +147,27 @@ norm = colors.Normalize(fracs.min(), fracs.max())
 colourmap = cm.jet(norm(fracs.tolist()))
 
 ax.bar3d(xpos, ypos, zpos, dx, dy, dz, zsort='average', color=colourmap)
+plt.xlabel("gen_phitt")
+plt.ylabel("pseudo_phitt")
+ax.set_zlabel("frequency")
+plt.grid()
+plt.show()
 
+#%% Surface plot
+
+x = gen_phitt
+y = new_phitt
+
+hist, xedges, yedges = np.histogram2d(x, y, bins=50, range=[[-90, 90], [-90, 90]])
+spacing = xedges[1]-xedges[0]
+zpos = hist.ravel()
+xpos, ypos = np.meshgrid(xedges[:-1] + spacing/2, yedges[:-1] + spacing/2, indexing="ij")
+
+fig = plt.figure()
+ax = plt.axes(projection='3d')
+ax.plot_surface(xpos, ypos, hist,cmap='viridis', edgecolor='none')
+ax.set_title('Surface plot')
+ax.set_xlabel("gen_phitt")
+ax.set_ylabel("pseudo_phitt")
+ax.set_zlabel("frequency")
 plt.show()
