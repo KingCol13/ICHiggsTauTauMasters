@@ -46,10 +46,10 @@ double likelihood(double params[6],
 				  ROOT::Math::PxPyPzEVector vis_1,
 				  ROOT::Math::PxPyPzEVector vis_2,
 				  TVectorD met, TMatrixD met_cov,
-				  TVectorD sv_1, TMatrixD sv_1_cov,
-				  TVectorD sv_2, TMatrixD sv_2_cov,
-				  TVectorD ip_1, TMatrixD ip_1_cov,
-				  TVectorD ip_2, TMatrixD ip_2_cov
+				  TVectorD sv_1, TMatrixD sv_cov_1,
+				  TVectorD sv_2, TMatrixD sv_cov_2,
+				  TVectorD ip_1, TMatrixD ip_cov_1,
+				  TVectorD ip_2, TMatrixD ip_cov_2
 )
 {
 	// params[0,1,2] = x1, y1, z1
@@ -77,4 +77,17 @@ int main()
 {
 	std::cout << "Hello world!" << std::endl;
 	return 0;
+	
+	double vis_px_1, vis_py_1, vis_pz_1, vis_e_1;
+	double vis_px_2, vis_py_2, vis_pz_2, vis_e_2;
+	double metx, mety;
+	float metCov00, metCov01, metCov10, metCov11;
+	double ip_x_1, ip_y_1, ip_z_1;
+	double ip_x_2, ip_y_2, ip_z_2;
+	double ipcov00_1, ipcov01_1, ipcov02_1, ipcov10_1, ipcov11_1, ipcov12_1, ipcov20_1, ipcov21_1, ipcov22_1;
+	double ipcov00_2, ipcov01_2, ipcov02_2, ipcov10_2, ipcov11_2, ipcov12_2, ipcov20_2, ipcov21_2, ipcov22_2;
+	double sv_x_1, sv_y_1, sv_z_1;
+	double sv_x_2, sv_y_2, sv_z_2;
+	double svcov00_1, svcov01_1, svcov02_1, svcov10_1, svcov11_1, svcov12_1, svcov20_1, svcov21_1, svcov22_1;
+	double svcov00_2, svcov01_2, svcov02_2, svcov10_2, svcov11_2, svcov12_2, svcov20_2, svcov21_2, svcov22_2;
 }
