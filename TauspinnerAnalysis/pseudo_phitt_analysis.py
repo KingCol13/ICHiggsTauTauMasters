@@ -17,6 +17,7 @@ import matplotlib.cm as cm
 
 #%% Read data
 
+#tree = uproot.open("ROOTfiles/MVAFILE_AllHiggs_tt_pseudo_phitt.root")["ntuple"]
 tree = uproot.open("ROOTfiles/MVAFILE_AllHiggs_tt_pseudo_phitt.root")["ntuple"]
 
 selectors = ['mva_dm_1', 'mva_dm_2', 'tau_decay_mode_1', 'tau_decay_mode_2']
@@ -50,7 +51,6 @@ df = df[(df['mva_dm_1'] == 10) & (df['mva_dm_2'] == 10)]
 
 df = df.dropna(subset=['gen_phitt', 'pseudo_phitt'])
 #TODO: remove this when new non-logged maxed data comes in
-df = df[(df['pseudo_phitt']<-57.32) | (df['pseudo_phitt']>-57.28)]
 #df = df[df['aco_angle_1'] > -400]
 
 #%% Fix shift in data
@@ -73,6 +73,60 @@ plt.grid()
 plt.colorbar() 
 plt.show()
 
+diff_ps = np.array(df["wt_cp_ps"]-df["pseudo_wt_cp_ps"])
+diff_sm = np.array(df["wt_cp_sm"]-df["pseudo_wt_cp_sm"])
+diff_mm = np.array(df["wt_cp_mm"]-df["pseudo_wt_cp_mm"])
+
+plt.figure()
+plt.hist(diff_ps, bins = 50, alpha = 0.5, label = 'gen - reco ps weights\nMean: %.2f, std:%.2f'%(diff_ps.mean(), diff_ps.std()))
+plt.hist(diff_sm, bins = 50, alpha = 0.5, label = 'gen - reco sm weights\nMean: %.2f, std:%.2f'%(diff_sm.mean(), diff_sm.std()))
+plt.hist(diff_mm, bins = 50, alpha = 0.5, label = 'gen - reco mm weights\nMean: %.2f, std:%.2f'%(diff_mm.mean(), diff_mm.std()))
+plt.xlabel('gen-pseudo weights')
+plt.ylabel("Frequency")
+plt.legend()
+plt.grid()
+plt.show()
+
+#%% Discrimination histogram
+
+plt.figure()
+plt.title("Binary Discrimination")
+plt.xlabel("pseudo_phitt / degrees")
+plt.ylabel("Frequency")
+plt.hist(df[df['wt_cp_sm']>df['wt_cp_ps']]['pseudo_phitt'], 50, label="Even", alpha=0.5)
+plt.hist(df[df['wt_cp_sm']<df['wt_cp_ps']]['pseudo_phitt'], 50, label="Odd", alpha=0.5)
+plt.legend()
+plt.grid()
+plt.show()
+
+#%% Confusion Matrix
+
+def getNconfusion(df, true_class, pred_class):
+    true_sm = df['wt_cp_sm'] > df['wt_cp_ps']
+    pred_sm = df['pseudo_wt_cp_sm'] > df['pseudo_wt_cp_ps']
+    dfc = df.copy()
+    if true_class=='sm':
+        dfc = dfc[true_sm]
+    else:
+        dfc = dfc[~true_sm]
+    
+    if pred_class == 'sm':
+        dfc = dfc[pred_sm]
+    else:
+        dfc = dfc[~pred_sm]
+    
+    return len(dfc)/len(df)
+        
+#naming trueclass_predclass
+sm_sm = getNconfusion(df, 'sm', 'sm')
+sm_ps = getNconfusion(df, 'sm', 'ps')
+ps_sm = getNconfusion(df, 'ps', 'sm')
+ps_ps = getNconfusion(df, 'ps', 'ps')
+
+print("\t\tTrue SM\tTrue PS")
+print("Pred SM\t{:.4f}\t{:.4f}".format(sm_sm, ps_sm))
+print("Pred PS\t{:.4f}\t{:.4f}".format(sm_ps, ps_ps))
+
 #%% not useful histograms
 """
 plt.figure()
@@ -90,12 +144,10 @@ plt.grid()
 plt.show()
 """
 
-#%%
+#%% Profile plot
 
 res = gen_phitt - new_phitt
 x_range = np.linspace(-180, 180, 10000)
-m = len(res)/360
-y_triangle = np.where(x_range<0, m*(x_range/90+2), m*(2-x_range/90))
 
 def f(x, nvals, nbins):
     """
