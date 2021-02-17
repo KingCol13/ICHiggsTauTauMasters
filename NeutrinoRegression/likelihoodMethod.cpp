@@ -76,7 +76,14 @@ double likelihood(double params[6],
 int main()
 {
 	std::cout << "Hello world!" << std::endl;
-	return 0;
+	
+	TFile file("ROOTfiles/MVAFILE_AllHiggs_tt.root", "READ");
+	if (file.IsZombie())
+	{
+		std::cerr << "File didn't load correctly." << std::endl;
+		return -1;
+	}
+	TTree *tree = static_cast<TTree*>(file.Get("ntuple"));
 	
 	double vis_px_1, vis_py_1, vis_pz_1, vis_e_1;
 	double vis_px_2, vis_py_2, vis_pz_2, vis_e_2;
@@ -90,4 +97,165 @@ int main()
 	double sv_x_2, sv_y_2, sv_z_2;
 	double svcov00_1, svcov01_1, svcov02_1, svcov10_1, svcov11_1, svcov12_1, svcov20_1, svcov21_1, svcov22_1;
 	double svcov00_2, svcov01_2, svcov02_2, svcov10_2, svcov11_2, svcov12_2, svcov20_2, svcov21_2, svcov22_2;
+	
+	tree->SetBranchAddress("vis_px_1", &vis_px_1);
+	tree->SetBranchAddress("vis_py_1", &vis_py_1);
+	tree->SetBranchAddress("vis_pz_1", &vis_pz_1);
+	tree->SetBranchAddress("vis_e_1", &vis_e_1);
+	
+	tree->SetBranchAddress("vis_px_2", &vis_px_2);
+	tree->SetBranchAddress("vis_py_2", &vis_py_2);
+	tree->SetBranchAddress("vis_pz_2", &vis_pz_2);
+	tree->SetBranchAddress("vis_e_2", &vis_e_2);
+	
+	tree->SetBranchAddress("metx", &metx);
+	tree->SetBranchAddress("mety", &mety);
+	
+	tree->SetBranchAddress("metcov00", &metCov00);
+	tree->SetBranchAddress("metcov01", &metCov01);
+	tree->SetBranchAddress("metcov10", &metCov10);
+	tree->SetBranchAddress("metcov11", &metCov11);
+	
+	tree->SetBranchAddress("ip_x_1", &ip_x_1);
+	tree->SetBranchAddress("ip_y_1", &ip_y_1);
+	tree->SetBranchAddress("ip_z_1", &ip_z_1);
+	tree->SetBranchAddress("ip_x_2", &ip_x_2);
+	tree->SetBranchAddress("ip_y_2", &ip_y_2);
+	tree->SetBranchAddress("ip_z_2", &ip_z_2);
+	
+	tree->SetBranchAddress("ipcov00_1", &ipcov00_1);
+	tree->SetBranchAddress("ipcov01_1", &ipcov01_1);
+	tree->SetBranchAddress("ipcov02_1", &ipcov02_1);
+	tree->SetBranchAddress("ipcov10_1", &ipcov10_1);
+	tree->SetBranchAddress("ipcov11_1", &ipcov11_1);
+	tree->SetBranchAddress("ipcov12_1", &ipcov12_1);
+	tree->SetBranchAddress("ipcov20_1", &ipcov20_1);
+	tree->SetBranchAddress("ipcov21_1", &ipcov21_1);
+	tree->SetBranchAddress("ipcov22_1", &ipcov22_1);
+
+	tree->SetBranchAddress("ipcov00_2", &ipcov00_2);
+	tree->SetBranchAddress("ipcov01_2", &ipcov01_2);
+	tree->SetBranchAddress("ipcov02_2", &ipcov02_2);
+	tree->SetBranchAddress("ipcov10_2", &ipcov10_2);
+	tree->SetBranchAddress("ipcov11_2", &ipcov11_2);
+	tree->SetBranchAddress("ipcov12_2", &ipcov12_2);
+	tree->SetBranchAddress("ipcov20_2", &ipcov20_2);
+	tree->SetBranchAddress("ipcov21_2", &ipcov21_2);
+	tree->SetBranchAddress("ipcov22_2", &ipcov22_2);
+	
+	tree->SetBranchAddress("sv_x_1", &sv_x_1);
+	tree->SetBranchAddress("sv_y_1", &sv_y_1);
+	tree->SetBranchAddress("sv_z_1", &sv_z_1);
+	tree->SetBranchAddress("sv_x_2", &sv_x_2);
+	tree->SetBranchAddress("sv_y_2", &sv_y_2);
+	tree->SetBranchAddress("sv_z_2", &sv_z_2);
+	
+	tree->SetBranchAddress("svcov00_1", &svcov00_1);
+	tree->SetBranchAddress("svcov01_1", &svcov01_1);
+	tree->SetBranchAddress("svcov02_1", &svcov02_1);
+	tree->SetBranchAddress("svcov10_1", &svcov10_1);
+	tree->SetBranchAddress("svcov11_1", &svcov11_1);
+	tree->SetBranchAddress("svcov12_1", &svcov12_1);
+	tree->SetBranchAddress("svcov20_1", &svcov20_1);
+	tree->SetBranchAddress("svcov21_1", &svcov21_1);
+	tree->SetBranchAddress("svcov22_1", &svcov22_1);
+	
+	tree->SetBranchAddress("svcov00_2", &svcov00_2);
+	tree->SetBranchAddress("svcov01_2", &svcov01_2);
+	tree->SetBranchAddress("svcov02_2", &svcov02_2);
+	tree->SetBranchAddress("svcov10_2", &svcov10_2);
+	tree->SetBranchAddress("svcov11_2", &svcov11_2);
+	tree->SetBranchAddress("svcov12_2", &svcov12_2);
+	tree->SetBranchAddress("svcov20_2", &svcov20_2);
+	tree->SetBranchAddress("svcov21_2", &svcov21_2);
+	tree->SetBranchAddress("svcov22_2", &svcov22_2);
+	
+	// Event loop
+	//for (int i = 0, nEntries = tree->GetEntries(); i < nEntries; i++)
+	for (int i = 0, nEntries = 100; i < nEntries; i++)
+	{
+		tree->GetEntry(i);
+		
+		TVectorD met(2);
+		met(0) = metx;
+		met(1) = mety;
+		
+		TMatrixD metCov(2,2);
+		metCov(0,0) = metCov00;
+		metCov(0,1) = metCov01;
+		metCov(1,0) = metCov10;
+		metCov(1,1) = metCov11;
+		
+		TVectorD ip_1(3);
+		ip_1(0) = ip_x_1;
+		ip_1(1) = ip_y_1;
+		ip_1(2) = ip_z_1;
+		
+		TMatrixD ip_cov_1(3,3);
+		ip_cov_1(0,0) = ipcov00_1;
+		ip_cov_1(0,1) = ipcov01_1;
+		ip_cov_1(0,2) = ipcov02_1;
+		ip_cov_1(1,0) = ipcov10_1;
+		ip_cov_1(1,1) = ipcov11_1;
+		ip_cov_1(1,2) = ipcov12_1;
+		ip_cov_1(2,0) = ipcov20_1;
+		ip_cov_1(2,1) = ipcov21_1;
+		ip_cov_1(2,2) = ipcov22_1;
+		
+		TVectorD ip_2(3);
+		ip_2(0) = ip_x_2;
+		ip_2(1) = ip_y_2;
+		ip_2(2) = ip_z_2;
+		
+		TMatrixD ip_cov_2(3,3);
+		ip_cov_2(0,0) = ipcov00_2;
+		ip_cov_2(0,1) = ipcov01_2;
+		ip_cov_2(0,2) = ipcov02_2;
+		ip_cov_2(1,0) = ipcov10_2;
+		ip_cov_2(1,1) = ipcov11_2;
+		ip_cov_2(1,2) = ipcov12_2;
+		ip_cov_2(2,0) = ipcov20_2;
+		ip_cov_2(2,1) = ipcov21_2;
+		ip_cov_2(2,2) = ipcov22_2;
+		
+		TVectorD sv_1(3);
+		sv_1(0) = sv_x_1;
+		sv_1(1) = sv_y_1;
+		sv_1(2) = sv_z_1;
+		
+		TMatrixD sv_cov_1(3,3);
+		sv_cov_1(0,0) = svcov00_1;
+		sv_cov_1(0,1) = svcov01_1;
+		sv_cov_1(0,2) = svcov02_1;
+		sv_cov_1(1,0) = svcov10_1;
+		sv_cov_1(1,1) = svcov11_1;
+		sv_cov_1(1,2) = svcov12_1;
+		sv_cov_1(2,0) = svcov20_1;
+		sv_cov_1(2,1) = svcov21_1;
+		sv_cov_1(2,2) = svcov22_1;
+		
+		TVectorD sv_2(3);
+		sv_2(0) = sv_x_2;
+		sv_2(1) = sv_y_2;
+		sv_2(2) = sv_z_2;
+		
+		TMatrixD sv_cov_2(3,3);
+		sv_cov_2(0,0) = svcov00_2;
+		sv_cov_2(0,1) = svcov01_2;
+		sv_cov_2(0,2) = svcov02_2;
+		sv_cov_2(1,0) = svcov10_2;
+		sv_cov_2(1,1) = svcov11_2;
+		sv_cov_2(1,2) = svcov12_2;
+		sv_cov_2(2,0) = svcov20_2;
+		sv_cov_2(2,1) = svcov21_2;
+		sv_cov_2(2,2) = svcov22_2;
+		
+		//TODO: do this properly
+		ROOT::Math::PxPyPzEVector vis_1(1, 0.5, 0.5, 0);
+		ROOT::Math::PxPyPzEVector vis_2(1, -0.5, 0.5, 0);
+		double params[6] = {1, 1, 1, 1, 1, 1};
+		std::cout << likelihood(params, vis_1, vis_2, met, metCov, sv_1, sv_cov_1, sv_2, sv_cov_2, ip_1, ip_cov_1, ip_2, ip_cov_2) << std::endl;
+	}
+	
+	return 0;
 }
