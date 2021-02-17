@@ -1,6 +1,7 @@
 #include <iostream>
 #include <math.h>
 
+#include <gsl/gsl_multimin.h>
 #include "TFile.h"
 #include "TKey.h"
 #include "TTreeReader.h"
@@ -13,7 +14,7 @@
 /*
 
 Compile:
-g++ likelihoodMethod.cpp `root-config --libs --glibs --cflags --ldflags --auxlibs --auxcflags` -std=c++17 -o likelihoodMethod
+g++ likelihoodMethod.cpp `root-config --libs --glibs --cflags --ldflags --auxlibs --auxcflags` -lgsl -std=c++17 -o likelihoodMethod
 
 modify path after -I and -L for root Include and lib directories accordingly
 linker libs:
@@ -25,6 +26,22 @@ TreePlayer
 Find neutrino by maximising likelihood function.
 
 */
+
+struct Params
+{
+	ROOT::Math::PxPyPzEVector vis_1;
+	ROOT::Math::PxPyPzEVector vis_2;
+	TVectorD met;
+	TMatrixD met_cov;
+	TVectorD sv_1;
+	TMatrixD sv_cov_1;
+	TVectorD sv_2;
+	TMatrixD sv_cov_2;
+	TVectorD ip_1;
+	TMatrixD ip_cov_1;
+	TVectorD ip_2;
+	TMatrixD ip_cov_2;
+};
 
 struct Particle
 {
@@ -61,6 +78,19 @@ double multivariate_normal_probability(TVectorD x, TVectorD mean, TMatrixD covar
 	return std::exp(-0.5*(x-mean)*(inverse_covariance*(x-mean)))/std::sqrt(std::pow(2*M_PI, mean.GetNrows())*std::abs(det_cov));
 }
 
+double log_normal_probability(double x, double mu, double sigma)
+{
+	return -0.5*std::pow((x-mu)/sigma,2) - std::log(sigma) - 0.5*std::log(2*M_PI);
+}
+
+double log_multivariate_normal_probability(TVectorD x, TVectorD mean, TMatrixD covariance)
+{
+	double det_cov;
+	TMatrixD inverse_covariance = covariance.Invert(&det_cov);
+	
+	return -0.5*(x-mean)*(inverse_covariance*(x-mean)) - 0.5*std::log(det_cov) - 0.5*mean.GetNrows()*std::log(2*M_PI);
+}
+
 void svToDirection(TVectorD &dir, TMatrixD &dir_cov, TVectorD &sv, TMatrixD &sv_cov)
 {
 	double x = sv(0);
@@ -83,7 +113,7 @@ void svToDirection(TVectorD &dir, TMatrixD &dir_cov, TVectorD &sv, TMatrixD &sv_
 	Returns likelihood of params given the measured quantities and covariances
 	TODO: SV (use theta, phi for direction?), impact parameter
 */
-double likelihood(double params[6],
+double likelihood(double nu_p_vec[6],
 				  ROOT::Math::PxPyPzEVector vis_1,
 				  ROOT::Math::PxPyPzEVector vis_2,
 				  TVectorD met, TMatrixD met_cov,
@@ -95,8 +125,8 @@ double likelihood(double params[6],
 {
 	// params[0,1,2] = x1, y1, z1
 	// params[3,4,5] = x2, y2, z2
-	ROOT::Math::PxPyPzEVector nu_1(params[0], params[1], params[2], std::sqrt(params[0]*params[0] + params[1]*params[1] + params[2]*params[2]));
-	ROOT::Math::PxPyPzEVector nu_2(params[3], params[4], params[5], std::sqrt(params[3]*params[3] + params[4]*params[4] + params[5]*params[5]));
+	ROOT::Math::PxPyPzEVector nu_1(nu_p_vec[0], nu_p_vec[1], nu_p_vec[2], std::sqrt(nu_p_vec[0]*nu_p_vec[0] + nu_p_vec[1]*nu_p_vec[1] + nu_p_vec[2]*nu_p_vec[2]));
+	ROOT::Math::PxPyPzEVector nu_2(nu_p_vec[3], nu_p_vec[4], nu_p_vec[5], std::sqrt(nu_p_vec[3]*nu_p_vec[3] + nu_p_vec[4]*nu_p_vec[4] + nu_p_vec[5]*nu_p_vec[5]));
 
 	ROOT::Math::PxPyPzEVector tau_1 = vis_1 + nu_1;
 	ROOT::Math::PxPyPzEVector tau_2 = vis_2 + nu_2;
@@ -112,14 +142,14 @@ double likelihood(double params[6],
 	pred_met(0) = sum_nu.px();
 	pred_met(1) = sum_nu.py();
 	
-	double total = 1;
+	double total = 0;
 	// Masses
-	total *= normal_probability(pred_m_higgs, 125, 1);
-	total *= normal_probability(pred_m_tau_1, 1.777, 0.1);
-	total *= normal_probability(pred_m_tau_2, 1.777, 0.1);
+	total -= log_normal_probability(pred_m_higgs, 125, 1);
+	total -= log_normal_probability(pred_m_tau_1, 1.777, 0.1);
+	total -= log_normal_probability(pred_m_tau_2, 1.777, 0.1);
 	
 	// met
-	total *= multivariate_normal_probability(pred_met, met, met_cov);
+	total -= log_multivariate_normal_probability(pred_met, met, met_cov);
 	
 	// secondary vertex
 	// TODO: work out if this is the best way
@@ -137,16 +167,33 @@ double likelihood(double params[6],
 	TMatrixD dir_cov_2(2,2);
 	svToDirection(dir_2, dir_cov_2, sv_2, sv_cov_2);
 	
-	total *= multivariate_normal_probability(pred_dir_1, dir_1, dir_cov_1);
-	//total *= multivariate_normal_probability(pred_dir_2, dir_2, dir_cov_2);
+	//total -= log_multivariate_normal_probability(pred_dir_1, dir_1, dir_cov_1);
+	//total -= log_multivariate_normal_probability(pred_dir_2, dir_2, dir_cov_2);
 	
 	return total;
 }
 
+double gsl_my_f(const gsl_vector *nu_p_gsl_vec, void *params)
+{
+	Params *myP = (Params *) params;
+	double nu_p_vec[6];
+	for(unsigned int i=0; i<6; i++)
+	{
+		nu_p_vec[i] = gsl_vector_get(nu_p_gsl_vec, i);
+	}
+	return likelihood(nu_p_vec,
+										myP->vis_1,
+										myP->vis_2,
+										myP->met, myP->met_cov,
+				  					myP->sv_1, myP->sv_cov_1,
+				  					myP->sv_2, myP->sv_cov_2,
+				  					myP->ip_1, myP->ip_cov_1,
+				  					myP->ip_2, myP->ip_cov_2
+									 );
+}
+
 int main()
 {
-	std::cout << "Hello world!" << std::endl;
-	
 	TFile file("ROOTfiles/MVAFILE_AllHiggs_tt.root", "READ");
 	if (file.IsZombie())
 	{
@@ -251,7 +298,7 @@ int main()
 	
 	// Event loop
 	//for (int i = 0, nEntries = tree->GetEntries(); i < nEntries; i++)
-	for (int i = 0, nEntries = 25; i < nEntries; i++)
+	for (int i = 0, nEntries = 1; i < nEntries; i++)
 	{
 		tree->GetEntry(i);
 		
@@ -365,8 +412,93 @@ int main()
 			vis_2+=makeParticle(pi0_2);
 		}
 		
-		double params[6] = {-7.37813482, 28.5213691 , 11.32233143, 28.69153254, 19.62560315, 39.85436348};
-		std::cout << "Event: " << i << ", likelihood: " << likelihood(params, vis_1, vis_2, met, metCov, sv_1, sv_cov_1, sv_2, sv_cov_2, ip_1, ip_cov_1, ip_2, ip_cov_2) << std::endl;
+		//double nu_vec[6] = {-7.37813482, 28.5213691 , 11.32233143, 28.69153254, 19.62560315, 39.85436348};
+		
+		Params par;
+		par.vis_1 = vis_1;
+		par.vis_2 = vis_2;
+		par.met.ResizeTo(2);
+		par.met = met;
+		par.met_cov.ResizeTo(2,2);
+		par.met_cov = metCov;
+		par.sv_1.ResizeTo(3);
+		par.sv_1 = sv_1;
+		par.sv_cov_1.ResizeTo(3,3);
+		par.sv_cov_1 = sv_cov_1;
+		par.sv_2.ResizeTo(3);
+		par.sv_2 = sv_2;
+		par.sv_cov_2.ResizeTo(3,3);
+		par.sv_cov_2 = sv_cov_2;
+		par.ip_1.ResizeTo(3);
+		par.ip_1 = ip_1;
+		par.ip_cov_1.ResizeTo(3,3);
+		par.ip_cov_1 = ip_cov_1;
+		par.ip_2.ResizeTo(3);
+		par.ip_2 = ip_2;
+		par.ip_cov_2.ResizeTo(3,3);
+		par.ip_cov_2 = ip_cov_2;
+		
+		const gsl_multimin_fminimizer_type *T = gsl_multimin_fminimizer_nmsimplex2;
+		gsl_multimin_fminimizer *s = NULL;
+		gsl_vector *step_size, *x;
+		gsl_multimin_function minex_func;
+		
+		size_t iter = 0;
+		int status;
+		double size;
+		
+		x = gsl_vector_alloc (6);
+		step_size = gsl_vector_alloc (6);
+		
+		//gsl_vector_set_all (x, 0);
+		gsl_vector_set (x, 0, -7);
+		gsl_vector_set (x, 1, 28);
+		gsl_vector_set (x, 2, 11);
+		gsl_vector_set (x, 3, 28);
+		gsl_vector_set (x, 4, 19);
+		gsl_vector_set (x, 5, 39);
+		gsl_vector_set_all (step_size, 5.0);
+		
+		/* Initialize method and iterate */
+		minex_func.n = 6;
+		minex_func.f = gsl_my_f;
+		minex_func.params = &par;
+		
+		s = gsl_multimin_fminimizer_alloc (T, 6);
+		gsl_multimin_fminimizer_set (s, &minex_func, x, step_size);
+		
+		do
+		{
+			iter++;
+			status = gsl_multimin_fminimizer_iterate(s);
+
+			if (status)
+				break;
+			
+			size = gsl_multimin_fminimizer_size (s);
+			status = gsl_multimin_test_size (size, 1e-2);
+
+			if (status == GSL_SUCCESS)
+			{
+				printf ("converged to minimum at\n");
+			}
+			
+			std::cout << std::endl << "Iteration: " << iter << std::endl;
+			std::cout << "x: ";
+			for(unsigned int i=0; i<6; i++)
+			{
+				std::cout << gsl_vector_get(s->x, i) << ", ";
+			}
+			std::cout << std::endl;
+			std::cout << "-ln(likelihood) = " << s->fval << std::endl;
+		}
+		while (status == GSL_CONTINUE && iter < 5);
+		
+		gsl_vector_free(x);
+		gsl_vector_free(step_size);
+		gsl_multimin_fminimizer_free (s);
+		
+		//std::cout << "Event: " << i << ", likelihood: " << likelihood(params, vis_1, vis_2, met, metCov, sv_1, sv_cov_1, sv_2, sv_cov_2, ip_1, ip_cov_1, ip_2, ip_cov_2) << std::endl;
 	}
 	
 	return 0;
