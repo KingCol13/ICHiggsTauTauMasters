@@ -26,6 +26,28 @@ Find neutrino by maximising likelihood function.
 
 */
 
+struct Particle
+{
+	double px;
+	double py;
+	double pz;
+	double E;
+};
+
+/** Function to set particle data to be read from a_tree */
+void setupParticle(TTree *a_tree, std::string a_name, Particle &a_particle, int a_fromTau)
+{
+	a_tree->SetBranchAddress((a_name+"_px_"+std::to_string(a_fromTau)).c_str(), &a_particle.px);
+	a_tree->SetBranchAddress((a_name+"_py_"+std::to_string(a_fromTau)).c_str(), &a_particle.py);
+	a_tree->SetBranchAddress((a_name+"_pz_"+std::to_string(a_fromTau)).c_str(), &a_particle.pz);
+	a_tree->SetBranchAddress((a_name+"_E_"+std::to_string(a_fromTau)).c_str(), &a_particle.E);
+}
+
+ROOT::Math::PxPyPzEVector makeParticle(Particle part)
+{
+	return ROOT::Math::PxPyPzEVector(part.px, part.py, part.pz, part.E);
+}
+
 double normal_probability(double x, double mu, double sigma)
 {
 	return std::exp(-0.5*std::pow((x-mu)/sigma,2))/(sigma*std::sqrt(2*M_PI));
@@ -38,6 +60,25 @@ double multivariate_normal_probability(TVectorD x, TVectorD mean, TMatrixD covar
 
 	return std::exp(-0.5*(x-mean)*(inverse_covariance*(x-mean)))/std::sqrt(std::pow(2*M_PI, mean.GetNrows())*std::abs(det_cov));
 }
+
+void svToDirection(TVectorD &dir, TMatrixD &dir_cov, TVectorD &sv, TMatrixD &sv_cov)
+{
+	double x = sv(0);
+	double y = sv(1);
+	double z = sv(2);
+	
+	dir(0) = std::atan(std::sqrt(x*x+y*y)/z);
+	dir(1) = std::atan(y/x);
+	
+	double rho_sqr = x*x+y*y;
+	double r_sqr = rho_sqr+z*z;
+	dir_cov(0,0) = ((z*z*x*x*sv_cov(0,0)+z*z+y*y*sv_cov(1,1))/rho_sqr + rho_sqr*sv_cov(2,2))/(r_sqr*r_sqr);
+	dir_cov(1,1) = (y*y*sv_cov(0,0) + x*x*sv_cov(1,1))/rho_sqr;
+	//TODO: better than setting off-diagonals to 0
+	dir_cov(0,1) = 0;
+	dir_cov(1,0) = 0;
+}
+
 /**
 	Returns likelihood of params given the measured quantities and covariances
 	TODO: SV (use theta, phi for direction?), impact parameter
@@ -54,8 +95,8 @@ double likelihood(double params[6],
 {
 	// params[0,1,2] = x1, y1, z1
 	// params[3,4,5] = x2, y2, z2
-	ROOT::Math::PxPyPzEVector nu_1(params[0], params[1], params[2], 0);
-	ROOT::Math::PxPyPzEVector nu_2(params[3], params[4], params[5], 0);
+	ROOT::Math::PxPyPzEVector nu_1(params[0], params[1], params[2], std::sqrt(params[0]*params[0] + params[1]*params[1] + params[2]*params[2]));
+	ROOT::Math::PxPyPzEVector nu_2(params[3], params[4], params[5], std::sqrt(params[3]*params[3] + params[4]*params[4] + params[5]*params[5]));
 
 	ROOT::Math::PxPyPzEVector tau_1 = vis_1 + nu_1;
 	ROOT::Math::PxPyPzEVector tau_2 = vis_2 + nu_2;
@@ -67,10 +108,39 @@ double likelihood(double params[6],
 	double pred_m_tau_2 = tau_2.M();
 
 	ROOT::Math::PxPyPzEVector sum_nu = nu_1+nu_2;
-	double pred_met_x = sum_nu.px();
-	double pred_met_y = sum_nu.py();
-
-	return normal_probability(pred_m_higgs, 125, 1);
+	TVectorD pred_met(2);
+	pred_met(0) = sum_nu.px();
+	pred_met(1) = sum_nu.py();
+	
+	double total = 1;
+	// Masses
+	total *= normal_probability(pred_m_higgs, 125, 1);
+	total *= normal_probability(pred_m_tau_1, 1.777, 0.1);
+	total *= normal_probability(pred_m_tau_2, 1.777, 0.1);
+	
+	// met
+	total *= multivariate_normal_probability(pred_met, met, met_cov);
+	
+	// secondary vertex
+	// TODO: work out if this is the best way
+	TVectorD pred_dir_1(2);
+	pred_dir_1(0) = std::atan(std::sqrt(tau_1.Px()*tau_1.Px()+tau_1.Py()*tau_1.Py())/tau_1.Pz());
+	pred_dir_1(1) = std::atan(tau_1.Py()/tau_1.Px());
+	TVectorD dir_1(2);
+	TMatrixD dir_cov_1(2,2);
+	svToDirection(dir_1, dir_cov_1, sv_1, sv_cov_1);
+	
+	TVectorD pred_dir_2(2);
+	pred_dir_2(0) = std::atan(std::sqrt(tau_2.Px()*tau_2.Px()+tau_2.Py()*tau_2.Py())/tau_2.Pz());
+	pred_dir_2(1) = std::atan(tau_2.Py()/tau_2.Px());
+	TVectorD dir_2(2);
+	TMatrixD dir_cov_2(2,2);
+	svToDirection(dir_2, dir_cov_2, sv_2, sv_cov_2);
+	
+	total *= multivariate_normal_probability(pred_dir_1, dir_1, dir_cov_1);
+	//total *= multivariate_normal_probability(pred_dir_2, dir_2, dir_cov_2);
+	
+	return total;
 }
 
 int main()
@@ -97,16 +167,25 @@ int main()
 	double sv_x_2, sv_y_2, sv_z_2;
 	double svcov00_1, svcov01_1, svcov02_1, svcov10_1, svcov11_1, svcov12_1, svcov20_1, svcov21_1, svcov22_1;
 	double svcov00_2, svcov01_2, svcov02_2, svcov10_2, svcov11_2, svcov12_2, svcov20_2, svcov21_2, svcov22_2;
+	int mva_dm_1, mva_dm_2;
 	
-	tree->SetBranchAddress("vis_px_1", &vis_px_1);
-	tree->SetBranchAddress("vis_py_1", &vis_py_1);
-	tree->SetBranchAddress("vis_pz_1", &vis_pz_1);
-	tree->SetBranchAddress("vis_e_1", &vis_e_1);
+	tree->SetBranchAddress("mva_dm_1", &mva_dm_1);
+	tree->SetBranchAddress("mva_dm_2", &mva_dm_2);
 	
-	tree->SetBranchAddress("vis_px_2", &vis_px_2);
-	tree->SetBranchAddress("vis_py_2", &vis_py_2);
-	tree->SetBranchAddress("vis_pz_2", &vis_pz_2);
-	tree->SetBranchAddress("vis_e_2", &vis_e_2);
+	// Setup particles
+	Particle pi_1, pi2_1, pi3_1, pi0_1;
+	Particle pi_2, pi2_2, pi3_2, pi0_2;
+	setupParticle(tree, "pi", pi_1, 1);
+	setupParticle(tree, "pi", pi_2, 2);
+	setupParticle(tree, "pi2", pi2_1, 1);
+	setupParticle(tree, "pi2", pi2_2, 2);
+	setupParticle(tree, "pi3", pi3_1, 1);
+	setupParticle(tree, "pi3", pi3_2, 2);
+	setupParticle(tree, "pi0", pi0_1, 1);
+	setupParticle(tree, "pi0", pi0_2, 2);
+	
+	tree->SetBranchAddress("metx", &metx);
+	tree->SetBranchAddress("metx", &metx);
 	
 	tree->SetBranchAddress("metx", &metx);
 	tree->SetBranchAddress("mety", &mety);
@@ -172,7 +251,7 @@ int main()
 	
 	// Event loop
 	//for (int i = 0, nEntries = tree->GetEntries(); i < nEntries; i++)
-	for (int i = 0, nEntries = 100; i < nEntries; i++)
+	for (int i = 0, nEntries = 25; i < nEntries; i++)
 	{
 		tree->GetEntry(i);
 		
@@ -250,11 +329,44 @@ int main()
 		sv_cov_2(2,1) = svcov21_2;
 		sv_cov_2(2,2) = svcov22_2;
 		
-		//TODO: do this properly
-		ROOT::Math::PxPyPzEVector vis_1(1, 0.5, 0.5, 0);
-		ROOT::Math::PxPyPzEVector vis_2(1, -0.5, 0.5, 0);
-		double params[6] = {1, 1, 1, 1, 1, 1};
-		std::cout << likelihood(params, vis_1, vis_2, met, metCov, sv_1, sv_cov_1, sv_2, sv_cov_2, ip_1, ip_cov_1, ip_2, ip_cov_2) << std::endl;
+		// Add up visible products for the first tau
+		ROOT::Math::PxPyPzEVector vis_1 = makeParticle(pi_1);
+		if (mva_dm_1 == 1 || mva_dm_1 == 2) // rho/pi+2pi0
+		{
+			vis_1+=makeParticle(pi0_1);
+		}
+		else if (mva_dm_1 == 10) // 3pi
+		{
+			vis_1+=makeParticle(pi2_1);
+			vis_1+=makeParticle(pi3_1);
+		}
+		else if (mva_dm_1 == 11) // 3pi+pi0
+		{
+			vis_1+=makeParticle(pi2_1);
+			vis_1+=makeParticle(pi3_1);
+			vis_1+=makeParticle(pi0_1);
+		}
+		
+		// Add up visible products for the second tau
+		ROOT::Math::PxPyPzEVector vis_2 = makeParticle(pi_2);
+		if (mva_dm_2 == 1 || mva_dm_2 == 2) // rho/pi+2pi0
+		{
+			vis_2+=makeParticle(pi0_2);
+		}
+		else if (mva_dm_2 == 10) // 3pi
+		{
+			vis_2+=makeParticle(pi2_2);
+			vis_2+=makeParticle(pi3_2);
+		}
+		else if (mva_dm_2 == 11) // 3pi+pi0
+		{
+			vis_2+=makeParticle(pi2_2);
+			vis_2+=makeParticle(pi3_2);
+			vis_2+=makeParticle(pi0_2);
+		}
+		
+		double params[6] = {-7.37813482, 28.5213691 , 11.32233143, 28.69153254, 19.62560315, 39.85436348};
+		std::cout << "Event: " << i << ", likelihood: " << likelihood(params, vis_1, vis_2, met, metCov, sv_1, sv_cov_1, sv_2, sv_cov_2, ip_1, ip_cov_1, ip_2, ip_cov_2) << std::endl;
 	}
 	
 	return 0;
