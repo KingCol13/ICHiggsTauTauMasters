@@ -170,6 +170,19 @@ double likelihood(double nu_p_vec[6],
 	//total -= log_multivariate_normal_probability(pred_dir_1, dir_1, dir_cov_1);
 	//total -= log_multivariate_normal_probability(pred_dir_2, dir_2, dir_cov_2);
 	
+	// sv unit vector method
+	TVectorD pUnit_1(3);
+	pUnit_1(0) = nu_1.Px();
+	pUnit_1(1) = nu_1.Px();
+	pUnit_1(2) = nu_1.Px();
+	pUnit_1*=1/std::sqrt(pUnit_1.Norm2Sqr());
+	
+	double sv_length_sqr_1 = sv_1.Norm2Sqr();
+	sv_1*=1/std::sqrt(sv_length_sqr_1);
+	sv_cov_1*=1/sv_length_sqr_1;
+	
+	//total -= log_multivariate_normal_probability(pUnit_1, sv_1, sv_cov_1);
+	
 	return total;
 }
 
@@ -190,6 +203,11 @@ double gsl_my_f(const gsl_vector *nu_p_gsl_vec, void *params)
 				  					myP->ip_1, myP->ip_cov_1,
 				  					myP->ip_2, myP->ip_cov_2
 									 );
+}
+
+double gsl_my_f_test(const gsl_vector *x, void *params)
+{
+	return gsl_vector_get(x, 0)*gsl_vector_get(x, 0);
 }
 
 int main()
@@ -298,7 +316,7 @@ int main()
 	
 	// Event loop
 	//for (int i = 0, nEntries = tree->GetEntries(); i < nEntries; i++)
-	for (int i = 0, nEntries = 1; i < nEntries; i++)
+	for (int i = 0, nEntries = 100; i < nEntries; i++)
 	{
 		tree->GetEntry(i);
 		
@@ -450,18 +468,22 @@ int main()
 		x = gsl_vector_alloc (6);
 		step_size = gsl_vector_alloc (6);
 		
-		//gsl_vector_set_all (x, 0);
-		gsl_vector_set (x, 0, -7);
-		gsl_vector_set (x, 1, 28);
-		gsl_vector_set (x, 2, 11);
-		gsl_vector_set (x, 3, 28);
-		gsl_vector_set (x, 4, 19);
-		gsl_vector_set (x, 5, 39);
+		//gsl_vector_set_all (x, 0.1);
+		
+		gsl_vector_set (x, 0, -7.37813482);
+		gsl_vector_set (x, 1, 28.5213691);
+		gsl_vector_set (x, 2, 11.32233143);
+		gsl_vector_set (x, 3, 28.69153254);
+		gsl_vector_set (x, 4, 19.62560315);
+		gsl_vector_set (x, 5, 39.85436348);
+		
+		
 		gsl_vector_set_all (step_size, 5.0);
 		
 		/* Initialize method and iterate */
 		minex_func.n = 6;
 		minex_func.f = gsl_my_f;
+		//minex_func.f = gsl_my_f_test;
 		minex_func.params = &par;
 		
 		s = gsl_multimin_fminimizer_alloc (T, 6);
@@ -480,19 +502,17 @@ int main()
 
 			if (status == GSL_SUCCESS)
 			{
-				printf ("converged to minimum at\n");
+				std::cout << std::endl << "Minimum on Iteration: " << iter << std::endl;
+				std::cout << "x: ";
+				for(unsigned int i=0; i<6; i++)
+				{
+					std::cout << gsl_vector_get(s->x, i) << ", ";
+				}
+				std::cout << std::endl;
+				std::cout << "-ln(likelihood) = " << s->fval << std::endl;
 			}
-			
-			std::cout << std::endl << "Iteration: " << iter << std::endl;
-			std::cout << "x: ";
-			for(unsigned int i=0; i<6; i++)
-			{
-				std::cout << gsl_vector_get(s->x, i) << ", ";
-			}
-			std::cout << std::endl;
-			std::cout << "-ln(likelihood) = " << s->fval << std::endl;
 		}
-		while (status == GSL_CONTINUE && iter < 5);
+		while (status == GSL_CONTINUE && iter < 10000);
 		
 		gsl_vector_free(x);
 		gsl_vector_free(step_size);
