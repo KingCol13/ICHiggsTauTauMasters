@@ -14,17 +14,7 @@ def polarimetric(df, decay_mode1, decay_mode2):
     
     m_tau = 1.77686
     
-    if decay_mode1 == 10 and decay_mode2 == 10:
-        print('\na1(3pr) - a1(3pr) Decay mode\n')
-        #1) define the visible decay products
-        pi_1_4Mom = Momentum4(df["pi_E_1"],df["pi_px_1"],df["pi_py_1"],df["pi_pz_1"])
-        pi2_1_4Mom = Momentum4(df["pi2_E_1"],df["pi2_px_1"],df["pi2_py_1"],df["pi2_pz_1"])
-        pi3_1_4Mom = Momentum4(df["pi3_E_1"],df["pi3_px_1"],df["pi3_py_1"],df["pi3_pz_1"])
-        pi_2_4Mom = Momentum4(df["pi_E_2"],df["pi_px_2"],df["pi_py_2"],df["pi_pz_2"]) 
-        pi2_2_4Mom = Momentum4(df["pi2_E_2"],df["pi2_px_2"],df["pi2_py_2"],df["pi2_pz_2"]) 
-        pi3_2_4Mom = Momentum4(df["pi3_E_2"],df["pi3_px_2"],df["pi3_py_2"],df["pi3_pz_2"]) 
-        tau_1_vis = pi_1_4Mom + pi2_1_4Mom + pi3_1_4Mom 
-        tau_2_vis = pi_2_4Mom + pi2_2_4Mom + pi3_2_4Mom 
+    tau_1_vis, tau_2_vis = bf.get_vis(df, decay_mode1, decay_mode2) 
     
     
     #NEUTRINO 1
@@ -33,6 +23,8 @@ def polarimetric(df, decay_mode1, decay_mode2):
     m_vis = np.where(tau_1_vis.m==0, 1.260, tau_1_vis.m)
     #3 caluclate directions
     norm_sv_1 = bf.norm([df['sv_x_1'], df['sv_y_1'], df['sv_z_1']])
+    #remove the 0 lenght data otherwise we have nans
+    norm_sv_1 = np.where(norm_sv_1 == 0, 9999, norm_sv_1)
     dir_x_tau1 = df['sv_x_1']/norm_sv_1
     dir_y_tau1 = df['sv_y_1']/norm_sv_1
     dir_z_tau1 = df['sv_z_1']/norm_sv_1
@@ -62,6 +54,8 @@ def polarimetric(df, decay_mode1, decay_mode2):
     m_vis = tau_2_vis.m
     m_vis = np.where(tau_2_vis.m==0, 1.260, tau_2_vis.m)
     norm_sv_2 = bf.norm([df['sv_x_2'], df['sv_y_2'], df['sv_z_2']])
+    #remove the 0 lenght data otherwise we have nans
+    norm_sv_2 = np.where(norm_sv_2 == 0, 9999, norm_sv_2)
     dir_x_tau2 = df['sv_x_2']/norm_sv_2
     dir_y_tau2 = df['sv_y_2']/norm_sv_2
     dir_z_tau2 = df['sv_z_2']/norm_sv_2

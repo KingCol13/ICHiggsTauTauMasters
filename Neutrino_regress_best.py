@@ -10,11 +10,23 @@ import sys
 sys.path.append("/home/acraplet/Alie/Masters/ICHiggsTauTauMasters/")
 import uproot 
 import numpy as np
-
+import polarimetric_module as polari
+import alpha_module as am
+import basic_functions as bf
+import tensorflow as tf
 import pandas as pd
 import matplotlib.pyplot as plt
 from lbn_modified3 import LBN, LBNLayer
 import tensorflow as tf
+
+import configuration_module as conf
+
+#don't  forget to change name of the file at the end
+tau_mode1 = 10
+tau_mode2 = 10
+decay_mode1 = 10
+decay_mode2 = 10
+
 
 # stop tensorflow trying to overfill GPU memory
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -34,7 +46,7 @@ from pylorentz import Vector4
 from pylorentz import Position4
 
 # loading the tree
-tree = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_AllHiggs_tt.root")["ntuple"]
+tree = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_tt.root")["ntuple"]
 #tree = uproot.open("/eos/user/d/dwinterb/SWAN_projects/Masters_CP/MVAFILE_GluGluHToTauTauUncorrelatedDecay_Filtered_tt_2018.root")["ntuple"]
 print("\n Tree loaded\n")
 
@@ -42,9 +54,15 @@ print("\n Tree loaded\n")
 # define what variables are to be read into the dataframe
 momenta_features = [ "pi_E_1", "pi_px_1", "pi_py_1", "pi_pz_1", #leading charged pi 4-momentum
               "pi_E_2", "pi_px_2", "pi_py_2", "pi_pz_2", #subleading charged pi 4-momentum
-              #"pi0_E_1","pi0_px_1","pi0_py_1","pi0_pz_1", #leading neutral pi 4-momentum
-              #"pi0_E_2","pi0_px_2","pi0_py_2","pi0_pz_2", #subleading neutral pi 4-momentum
+              "pi0_E_1","pi0_px_1","pi0_py_1","pi0_pz_1", #leading neutral pi 4-momentum
+              "pi0_E_2","pi0_px_2","pi0_py_2","pi0_pz_2", #subleading neutral pi 4-momentum
               "gen_nu_p_1", "gen_nu_phi_1", "gen_nu_eta_1", #leading neutrino, gen level
+              "gen_vis_p_1", "gen_vis_p_2",
+              "gen_vis_E_1", "gen_vis_E_2",
+              "gen_vis_phi_1", "gen_vis_phi_2",
+              "gen_vis_eta_1", "gen_vis_eta_2",
+              
+              
               "gen_nu_p_2", "gen_nu_phi_2", "gen_nu_eta_2", #subleading neutrino, gen level  
               "pi2_E_1", "pi2_px_1", "pi2_py_1", "pi2_pz_1",
               "pi3_E_1", "pi3_px_1", "pi3_py_1", "pi3_pz_1",
@@ -55,6 +73,7 @@ momenta_features = [ "pi_E_1", "pi_px_1", "pi_py_1", "pi_pz_1", #leading charged
 other_features = [ "ip_x_1", "ip_y_1", "ip_z_1",        #leading impact parameter
                    "ip_x_2", "ip_y_2", "ip_z_2",        #subleading impact parameter
                    #"y_1_1", "y_1_2",
+                   "ip_sig_1", "ip_sig_2",
                    "gen_phitt",
                    "aco_angle_1", "pv_angle"
                  ]    # ratios of energies
@@ -96,19 +115,19 @@ met_covariance_matrices = ["metcov00",
 
 covs = sv_covariance_matrices + ip_covariance_matrices + met_covariance_matrices
 
-variables4= momenta_features + other_features + target + selectors + additional_info#+ covs) #copying Kinglsey's way cause it is very clean
+variables4= momenta_features + other_features + target + selectors + additional_info + met_covariance_matrices   #+ covs #copying Kinglsey's way cause it is very clean
 print('Check 1')
 df4 = tree.pandas.df(variables4)
 
 df4 = df4[
-      (df4["tau_decay_mode_1"] == 10) 
-    & (df4["tau_decay_mode_2"] == 10) 
-    & (df4["mva_dm_1"] == 10) 
-    & (df4["mva_dm_2"] == 10)
-    & (df4["gen_nu_p_1"] > -4000)
-    & (df4["gen_nu_p_2"] > -4000)
-    & (df4["sv_x_1"] != 0)
-    & (df4["sv_x_2"] != 0)
+      (df4["tau_decay_mode_1"] == tau_mode1) 
+    & (df4["tau_decay_mode_2"] == tau_mode2) 
+    & (df4["mva_dm_1"] == decay_mode1) 
+    & (df4["mva_dm_2"] == decay_mode2)
+    #& (df4["gen_nu_p_1"] > -4000)
+    #& (df4["gen_nu_p_2"] > -4000)
+    #& (df4["sv_x_1"] != 0)
+    #& (df4["sv_x_2"] != 0)
     
 ]
 
@@ -116,7 +135,7 @@ print(len(df4),'This is the length') #up to here we are fine
 
 lenght1 = len(df4)
 trainFrac = 0.7
-df4 = df4.dropna(subset=momenta_features + other_features + target + additional_info)
+df4 = df4.dropna()
 
 length2 = len(df4)
 
@@ -178,11 +197,11 @@ def get_a1(df4):
     pi_2_4Mom = Momentum4(df4["pi_E_2"],df4["pi_px_2"],df4["pi_py_2"],df4["pi_pz_2"]) 
     pi2_2_4Mom = Momentum4(df4["pi2_E_2"],df4["pi2_px_2"],df4["pi2_py_2"],df4["pi2_pz_2"]) 
     pi3_2_4Mom = Momentum4(df4["pi3_E_2"],df4["pi3_px_2"],df4["pi3_py_2"],df4["pi3_pz_2"]) 
-    #pi0_1_4Mom = Momentum4(df4["pi0_E_1"],df4["pi0_px_1"],df4["pi0_py_1"],df4["pi0_pz_1"])
-    #pi0_2_4Mom = Momentum4(df4["pi0_E_2"],df4["pi0_px_2"],df4["pi0_py_2"],df4["pi0_pz_2"])
+    pi0_1_4Mom = Momentum4(df4["pi0_E_1"],df4["pi0_px_1"],df4["pi0_py_1"],df4["pi0_pz_1"])
+    pi0_2_4Mom = Momentum4(df4["pi0_E_2"],df4["pi0_px_2"],df4["pi0_py_2"],df4["pi0_pz_2"])
 
-    tau_1_vis = pi_1_4Mom + pi2_1_4Mom + pi3_1_4Mom 
-    tau_2_vis = pi_2_4Mom + pi2_2_4Mom + pi3_2_4Mom 
+    tau_1_vis = pi_1_4Mom + pi0_1_4Mom#pi2_1_4Mom + pi3_1_4Mom 
+    tau_2_vis = pi_2_4Mom + pi0_2_4Mom #pi2_2_4Mom + pi3_2_4Mom 
     
     return tau_1_vis, tau_2_vis
     
@@ -302,6 +321,8 @@ def loss_fn(y_true, y_pred):
 
 
 def get_x_y(df4):
+    alpha_1, alpha_2 = am.alphas_clamped(df4, decay_mode1, decay_mode2)
+    alphas = [alpha_1, alpha_2]
     tau_1_vis, tau_2_vis = get_a1(df4)
     nu_1, nu_2 = get_nu(df4)
     ref = [#smear_px,py                      #0
@@ -328,29 +349,34 @@ def get_x_y(df4):
     ]
     y = tf.transpose(ref)
     
-    x8 = np.array([
-              #smear_px,
-              #smear_py,
-              Mom4_to_tf(tau_1_vis.e),    #4
-              Mom4_to_tf(tau_1_vis.p_x),  #4
-              Mom4_to_tf(tau_1_vis.p_y),  #4
-              Mom4_to_tf(tau_1_vis.p_z),  #4
-              Mom4_to_tf(tau_2_vis.e),    #5
-              Mom4_to_tf(tau_2_vis.p_x),  #5
-              Mom4_to_tf(tau_2_vis.p_y),  #5
-              Mom4_to_tf(tau_2_vis.p_z),  #5
-              #df4["ip_x_1"], df4["ip_y_1"], df4["ip_z_1"], #6
-              #df4["ip_x_2"], df4["ip_y_2"], df4["ip_z_2"], #7
-              #df4["ip_sig_2"], df4["ip_sig_1"], #8,9
-              df4["met"],                #1
-              df4["metx"],df4["mety"],   #2,3
-              df4["sv_x_1"], df4["sv_y_1"], df4["sv_z_1"], #10
-              df4["sv_x_2"], df4["sv_y_2"], df4["sv_z_2"], #11
-              #*sv_cov,
-              #*ip_cov,
-              #*met_cov,              
-             ])
-    x = tf.transpose(x8)
+    x20 = np.array([
+                    #smear_px,
+                    #smear_py,
+                    bf.Mom4_to_tf(tau_1_vis.e),    #4
+                    bf.Mom4_to_tf(tau_1_vis.p_x),  #4
+                    bf.Mom4_to_tf(tau_1_vis.p_y),  #4
+                    bf.Mom4_to_tf(tau_1_vis.p_z),  #4
+                    bf.Mom4_to_tf(tau_2_vis.e),    #5
+                    bf.Mom4_to_tf(tau_2_vis.p_x),  #5
+                    bf.Mom4_to_tf(tau_2_vis.p_y),  #5
+                    bf.Mom4_to_tf(tau_2_vis.p_z),  #5
+                    df4["ip_x_1"], df4["ip_y_1"], df4["ip_z_1"], #6
+                    df4["ip_x_2"], df4["ip_y_2"], df4["ip_z_2"], #7
+                    df4["ip_sig_2"], df4["ip_sig_1"], #8,9
+                    df4["met"],                #1
+                    df4["metx"],df4["mety"],   #2,3
+                    #df4["sv_x_1"], df4["sv_y_1"], df4["sv_z_1"], #10
+                    #df4["sv_x_2"], df4["sv_y_2"], df4["sv_z_2"], #11
+                    #*sv_cov,
+                    #*ip_cov,
+                    #*met_cov,
+                    #*guess1_1, *guess2_1 #13
+                    #*guess1_2, *guess2_2 #14
+                    #*nu1_guess, *nu2_guess #15
+                    *alphas
+                    
+                    ])
+    x = tf.transpose(x20)
     
     return x, y
     
@@ -366,10 +392,10 @@ B_size = 500#2**10
 
 #For now only
 ratio_all = 1
-ratio_p = 0
-ratio_phi = 0
-ratio_tau = 0
-ratio_H = 0
+ratio_p = 1
+ratio_phi = 1
+ratio_tau = 1
+ratio_H = 1
 
 
 x_train, y_train = get_x_y(df_train)
@@ -379,7 +405,7 @@ x_val, y_val = get_x_y(df_eval)
 input_1 = tf.keras.Input(shape = x_val.shape, name="lab_frame")
 x2 = tf.keras.layers.Dense(300, activation = 'relu', name="learning")(input_1)
 x3 = tf.keras.layers.Dense(300, activation = 'relu', name="learning2")(x2)
-x4 = tf.keras.layers.Dropout(0.1, name="dropout2")(x3)
+x4 = tf.keras.layers.Dropout(0.2, name="dropout2")(x3)
 output = tf.keras.layers.Dense(14, name="output")(x4)
 
 
@@ -404,22 +430,24 @@ nu_1_reco = Momentum4(res[:, i_nu1_px]**2+res[:, i_nu1_py]**2+np.sqrt(res[:, i_n
 nu_2_reco = Momentum4(res[:, i_nu2_px]**2+res[:, i_nu2_py]**2+np.sqrt(res[:, i_nu2_pz]**2), res[:, i_nu2_px], res[:, i_nu2_py], res[:, i_nu2_pz])
 
 #%% Add/remove columns to dataframe -  Thanks Kinglsey
-del df_eval['sv_x_1'], df_eval['sv_y_1'], df_eval['sv_z_1']
-del df_eval['sv_x_2'], df_eval['sv_y_2'], df_eval['sv_z_2']
+#del df_eval['sv_x_1'], df_eval['sv_y_1'], df_eval['sv_z_1']
+#del df_eval['sv_x_2'], df_eval['sv_y_2'], df_eval['sv_z_2']
 
-df_eval['reco_nu_p_1'] = nu_1_reco.p
-df_eval['reco_nu_p_2'] = nu_2_reco.p
-df_eval['reco_nu_phi_1'] = nu_1_reco.phi
-df_eval['reco_nu_phi_2'] = nu_2_reco.phi
-df_eval['reco_nu_eta_1'] = nu_1_reco.eta
-df_eval['reco_nu_eta_2'] = nu_2_reco.eta
+#df_eval['reco_nu_p_1'] = nu_1_reco.p
+#df_eval['reco_nu_p_2'] = nu_2_reco.p
+#df_eval['reco_nu_phi_1'] = nu_1_reco.phi
+#df_eval['reco_nu_phi_2'] = nu_2_reco.phi
+#df_eval['reco_nu_eta_1'] = nu_1_reco.eta
+#df_eval['reco_nu_eta_2'] = nu_2_reco.eta
 
 #%%  Write root file
+#to save only the a1-a1 decays
+df_eval = df4 
 
 treeBranches = {column : str(df_eval[column].dtypes) for column in df_eval}
 branchDict = {column : np.array(df_eval[column]) for column in df_eval}
 tree = uproot.newtree(treeBranches, title="ntuple", compression=uproot.ZLIB(3))
 
-with uproot.recreate("MVAFILE_AllHiggs_tt_regr.root") as f:
+with uproot.recreate("MVAFILE_AllHiggs_tt_10_10_w_gen.root") as f:
     f["ntuple"] = tree
     f["ntuple"].extend(branchDict)
