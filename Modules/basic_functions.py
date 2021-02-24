@@ -92,6 +92,6 @@ def plot_1d(qqty1, qqty2, label1, label2, xlim = (-100, 100), nb_bins = 1000):
     
     plt.xlabel('%s - %s'%(label1, label2), fontsize = 'x-large')
     plt.legend(prop = {'size':14})
-    plt.grid()
-    plt.show()
+    #plt.grid()
+    #plt.show()
     return 0
