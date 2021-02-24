@@ -10,10 +10,10 @@ def alphas(df, decay_mode1, decay_mode2):
     #A function to return the alpha parameters of the collinear approximation
     tau_1_vis, tau_2_vis = bf.get_vis(df, decay_mode1, decay_mode2) 
     
-    
-    alpha_2 = (df['mety']*tau_1_vis.p_x-df['metx']*tau_1_vis.p_y)/(tau_2_vis.p_y*tau_1_vis.p_x-tau_2_vis.p_x*tau_1_vis.p_y)
+    #issue with nans
+    alpha_2 = (df['mety']*tau_1_vis.p_x-df['metx']*tau_1_vis.p_y)/np.where((tau_2_vis.p_y*tau_1_vis.p_x-tau_2_vis.p_x*tau_1_vis.p_y) == 0, 10**-10, (tau_2_vis.p_y*tau_1_vis.p_x-tau_2_vis.p_x*tau_1_vis.p_y))
 
-    alpha_1 = (df['metx']-alpha_2*tau_2_vis.p_x)/tau_1_vis.p_x
+    alpha_1 = (df['metx']-alpha_2*tau_2_vis.p_x)/np.where(tau_1_vis.p_x == 0, 10**-10, tau_1_vis.p_x)
     
     return alpha_1, alpha_2
 
@@ -44,16 +44,20 @@ def alphas_clamped(df, decay_mode1, decay_mode2):
     tau_1_vis, tau_2_vis = bf.get_vis(df, decay_mode1, decay_mode2)
     
     
-    alpha_2 = (df['mety']*tau_1_vis.p_x-df['metx']*tau_1_vis.p_y)/(tau_2_vis.p_y*tau_1_vis.p_x-tau_2_vis.p_x*tau_1_vis.p_y)
+    alpha_2 = (df['mety']*tau_1_vis.p_x-df['metx']*tau_1_vis.p_y)/np.where((tau_2_vis.p_y*tau_1_vis.p_x-tau_2_vis.p_x*tau_1_vis.p_y) == 0, 10**-10, (tau_2_vis.p_y*tau_1_vis.p_x-tau_2_vis.p_x*tau_1_vis.p_y))
 
-    alpha_1 = (df['metx']-alpha_2*tau_2_vis.p_x)/tau_1_vis.p_x
+    alpha_1 = (df['metx']-alpha_2*tau_2_vis.p_x)/np.where(tau_1_vis.p_x == 0, 10**-10, tau_1_vis.p_x)
     
     
     #bring back to 1 when we are higher than 1, neutrino cannot carry away more than the tau momentum
-    alpha_1 = tf.where(abs(alpha_1)>=1, alpha_1/abs(alpha_1), alpha_1)
+    alpha_1 = tf.where(alpha_1<=0, 0*alpha_1/abs(alpha_1), alpha_1)
     
-    alpha_2 = tf.where(abs(alpha_2)>=1, alpha_2/abs(alpha_2), alpha_2)
+    alpha_2 = tf.where(alpha_2<=0, 0*alpha_2/abs(alpha_2), alpha_2)
     
     
     
     return alpha_1, alpha_2
+
+
+
+

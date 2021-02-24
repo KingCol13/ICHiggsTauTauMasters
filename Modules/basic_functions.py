@@ -63,7 +63,20 @@ def plot_2d(qqty1, qqty2, label1, label2, xlim = (0, 100), ylim = (0,100), nb_bi
     plt.hist2d(qqty1, qqty2, bins = nb_bins, norm=colors.LogNorm())
     plt.xlabel('%s'%label1, fontsize = 'x-large')
     plt.ylabel('%s'%label2, fontsize = 'x-large')
-    plt.plot([xlim[0], xlim[1]],[xlim[0], xlim[1]], 'k--')
+    #plt.plot([xlim[0], xlim[1]],[xlim[0], xlim[1]], 'k--')
+    plt.xlim(xlim[0], xlim[1])
+    plt.ylim(ylim[0], ylim[1])
+    plt.colorbar()
+    plt.grid()
+    plt.show()
+    return 0
+
+
+def plot_2d_normed(qqty1, qqty2, label1, label2, xlim = (0, 100), ylim = (0,100), nb_bins = (100,100)):
+    plt.hist2d(qqty1, qqty2, bins = nb_bins, norm=colors.LogNorm(), density = True)
+    plt.xlabel('%s'%label1, fontsize = 'x-large')
+    plt.ylabel('%s'%label2, fontsize = 'x-large')
+    #plt.plot([xlim[0], xlim[1]],[xlim[0], xlim[1]], 'k--')
     plt.xlim(xlim[0], xlim[1])
     plt.ylim(ylim[0], ylim[1])
     plt.colorbar()

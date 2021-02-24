@@ -14,18 +14,21 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, roc_curve, roc_auc_score
 
 import matplotlib as mpl
-import basic_functions as bf
+
 mpl.use('tkagg')
 import matplotlib.pyplot as plt
 from lbn_modified3 import LBN, LBNLayer
 import tensorflow as tf
+
+sys.path.append("/home/acraplet/Alie/Masters/ICHiggsTauTauMasters/Modules/")
+import basic_functions as bf
 import configuration_module as conf
 
 
-tau_mode1 = 1
-tau_mode2 = 1
-decay_mode1 = 1
-decay_mode2 = 1 
+tau_mode1 = 10
+tau_mode2 = 10
+decay_mode1 = 10
+decay_mode2 = 10 
 
 if len(sys.argv) == 5:
     tau_mode1 = int(sys.argv[1])
@@ -57,25 +60,28 @@ momenta_features = [ "pi_E_1", "pi_px_1", "pi_py_1", "pi_pz_1", #leading charged
               "pi_E_2", "pi_px_2", "pi_py_2", "pi_pz_2", #subleading charged pi 4-momentum
               "pi0_E_1","pi0_px_1","pi0_py_1","pi0_pz_1", #leading neutral pi 4-momentum
               "pi0_E_2","pi0_px_2","pi0_py_2","pi0_pz_2", #subleading neutral pi 4-momentum
-              "gen_nu_p_1", "gen_nu_phi_1", "gen_nu_eta_1", #leading neutrino, gen level
-              "gen_nu_p_2", "gen_nu_phi_2", "gen_nu_eta_2", #subleading neutrino, gen level  
+              #"gen_nu_p_1", "gen_nu_phi_1", "gen_nu_eta_1", #leading neutrino, gen level
+              "nu_px_1", "nu_py_1", "nu_pz_1", "nu_E_1",
+              "nu_px_2", "nu_py_2", "nu_pz_2", "nu_E_2",
+              #"gen_nu_p_2", "gen_nu_phi_2", "gen_nu_eta_2", #subleading neutrino, gen level  
               "pi2_E_1", "pi2_px_1", "pi2_py_1", "pi2_pz_1",
               "pi3_E_1", "pi3_px_1", "pi3_py_1", "pi3_pz_1",
               "pi2_E_2", "pi2_px_2", "pi2_py_2", "pi2_pz_2",
               "pi3_E_2", "pi3_px_2", "pi3_py_2", "pi3_pz_2"
                 ] 
 
-other_features = [ "ip_x_1", "ip_y_1", "ip_z_1",        #leading impact parameter
-                   "ip_x_2", "ip_y_2", "ip_z_2",        #subleading impact parameter
+other_features = [ #"ip_x_1", "ip_y_1", "ip_z_1",        #leading impact parameter
+                   #"ip_x_2", "ip_y_2", "ip_z_2",        #subleading impact parameter
                    #"y_1_1", "y_1_2",
-                   "gen_phitt", "ip_sig_2", "ip_sig_1"
+                   #"gen_phitt", "ip_sig_2", "ip_sig_1"
                  ]    # ratios of energies
 
-target = [ "met", "metx", "mety", #"aco_angle_1", "aco_angle_6", "aco_angle_5", "aco_angle_7"
+target = [ "metx", "mety", #"aco_angle_1", "aco_angle_6", "aco_angle_5", "aco_angle_7",  "met",
          ]  #acoplanarity angle
     
-selectors = [ "tau_decay_mode_1","tau_decay_mode_2",
-             "mva_dm_1","mva_dm_2","rand","wt_cp_ps","wt_cp_sm",
+selectors = [ "dm_1", "dm_2",
+    #"tau_decay_mode_1","tau_decay_mode_2",
+             #"mva_dm_1","mva_dm_2","rand","wt_cp_ps","wt_cp_sm",
             ]
 
 additional_info = [ "sv_x_1", "sv_y_1", "sv_z_1",
@@ -107,22 +113,26 @@ met_covariance_matrices = ["metcov00",
 
 covs = sv_covariance_matrices + ip_covariance_matrices + met_covariance_matrices
 
-variables4=(momenta_features+other_features+target+selectors +additional_info + covs) #copying Kinglsey's way cause it is very clean
+variables4=momenta_features+other_features+target+selectors +additional_info #+ covs #copying Kinglsey's way cause it is very clean
 print('Check 1')
 df4 = tree.pandas.df(variables4)
 
-df4 = df4[
-      (df4["tau_decay_mode_1"] == tau_mode1) 
-    & (df4["tau_decay_mode_2"] == tau_mode2) 
-    & (df4["mva_dm_1"] == decay_mode1) 
-    & (df4["mva_dm_2"] == decay_mode2)
-    & (df4["gen_nu_p_1"] > -4000)
-    & (df4["gen_nu_p_2"] > -4000)
+#df4 = df4[
+      #(df4["tau_decay_mode_1"] == tau_mode1) 
+    #& (df4["tau_decay_mode_2"] == tau_mode2) 
+    #& (df4["mva_dm_1"] == decay_mode1) 
+    #& (df4["mva_dm_2"] == decay_mode2)
+    #& (df4["gen_nu_p_1"] > -4000)
+    #& (df4["gen_nu_p_2"] > -4000)
     #& (df4["sv_x_1"] != 0)
     #& (df4["sv_x_2"] != 0)
     
-]
+#]
 
+df4 = df4[
+        (df4["dm_1"] == decay_mode1) 
+      & (df4["dm_2"] == decay_mode2) 
+    ]
 
 #remove the nans
 df4 = df4.dropna()

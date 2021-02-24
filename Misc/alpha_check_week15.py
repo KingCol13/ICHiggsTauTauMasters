@@ -5,9 +5,15 @@ import sys
 sys.path.append("/home/acraplet/Alie/Masters/ICHiggsTauTauMasters/")
 import uproot 
 import numpy as np
+
+sys.path.append("/home/acraplet/Alie/Masters/ICHiggsTauTauMasters/Modules/")
 import polarimetric_module_checks_week15 as polari
 import alpha_module as am
 import basic_functions as bf
+import configuration_module as conf
+
+
+
 import tensorflow as tf
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -15,7 +21,6 @@ from lbn_modified3 import LBN, LBNLayer
 import tensorflow as tf
 from matplotlib import colors
 
-import configuration_module as conf
 
 
 #working in the a1(3pi)-a1(3pi) channel
@@ -38,7 +43,6 @@ if gpus:
 
 #for some reason pylorentz is installed somewhere differently ?
 #sys.path.append("/eos/home-a/acraplet/.local/lib/python2.7/site-packages")
-sys.path.append("/home/acraplet/Alie/Masters/ICHiggsTauTauMasters/")
 from pylorentz import Momentum4
 from pylorentz import Vector4
 from pylorentz import Position4

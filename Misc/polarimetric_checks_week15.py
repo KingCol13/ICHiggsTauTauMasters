@@ -5,9 +5,14 @@ import sys
 sys.path.append("/home/acraplet/Alie/Masters/ICHiggsTauTauMasters/")
 import uproot 
 import numpy as np
+
+sys.path.append("/home/acraplet/Alie/Masters/ICHiggsTauTauMasters/Modules")
 import polarimetric_module_checks_week15 as polari
 import alpha_module as am
 import basic_functions as bf
+import configuration_module as conf
+
+
 import tensorflow as tf
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -15,7 +20,7 @@ from lbn_modified3 import LBN, LBNLayer
 import tensorflow as tf
 from matplotlib import colors
 
-import configuration_module as conf
+
 
 
 #working in the a1(3pi)-a1(3pi) channel
@@ -128,6 +133,9 @@ nu_1_guess1, nu_1_guess2, nu_2_guess1, nu_2_guess2, best_guess_nu1, best_guess_n
 
 gen_nu_1_guess1, gen_nu_1_guess2, gen_nu_2_guess1, gen_nu_2_guess2, gen_best_guess_nu1, gen_best_guess_nu2 = polari.gen_polarimetric(df4, decay_mode1, decay_mode2)
 
+nu_1_guess1_theta, nu_1_guess2_theta, nu_2_guess1_theta, nu_2_guess2_theta, best_guess_nu1_theta, best_guess_nu2_theta = polari.polarimetric_theta_max(df4, decay_mode1, decay_mode2)
+
+
 tau_1_vis, tau_2_vis = bf.get_vis(df4, decay_mode1, decay_mode2)
 
 gen_vis_1 = Momentum4.e_eta_phi_p(df4["gen_vis_E_1"],df4["gen_vis_eta_1"],df4["gen_vis_phi_1"],df4["gen_vis_p_1"])
@@ -140,6 +148,9 @@ tau_2 = nu_2 + tau_2_vis
 #gen_tau
 gen_tau_1 = nu_1 + gen_vis_1
 gen_tau_2 = nu_2 + gen_vis_2
+
+
+
 
 
 # polarimetric reco taus
@@ -157,6 +168,228 @@ tau1_guess4 = Momentum4(tau1_guess4[0], tau1_guess4[1], tau1_guess4[2], tau1_gue
 
 tau2_guess4 = tf.where(abs(tau2_guess1.p-tau_2.p)<=abs(tau2_guess2.p-tau_2.p), tau2_guess1, tau2_guess2)
 tau2_guess4 = Momentum4(tau2_guess4[0], tau2_guess4[1], tau2_guess4[2], tau2_guess4[3])
+
+
+
+# theta polarimetric reco taus
+tau1_guess1_theta = nu_1_guess1_theta + tau_1_vis
+tau1_guess2_theta = nu_1_guess2_theta + tau_1_vis
+
+tau2_guess1_theta  = nu_2_guess1_theta  + tau_2_vis
+tau2_guess2_theta  = nu_2_guess2_theta  + tau_2_vis
+
+tau1_guess3_theta  = best_guess_nu1_theta  + tau_1_vis
+tau2_guess3_theta  = best_guess_nu2_theta  + tau_2_vis
+
+tau1_guess4_theta  = tf.where(abs(tau1_guess1_theta .p-tau_1.p)<=abs(tau1_guess2_theta .p-tau_1.p), tau1_guess1_theta , tau1_guess2_theta )
+tau1_guess4_theta = Momentum4(tau1_guess4_theta[0], tau1_guess4_theta[1], tau1_guess4_theta[2], tau1_guess4_theta[3])
+
+tau2_guess4_theta  = tf.where(abs(tau2_guess1_theta.p-tau_2.p)<=abs(tau2_guess2_theta.p-tau_2.p), tau2_guess1_theta, tau2_guess2_theta)
+tau2_guess4_theta = Momentum4(tau2_guess4_theta[0], tau2_guess4_theta[1], tau2_guess4_theta[2], tau2_guess4_theta[3])
+
+
+
+
+
+
+
+
+plt.title('Quality of neutrino1 reconstruction - BEST CASE SCENARIO\nTau dir = sv')
+best_nu1_dir = [best_guess_nu1[1], best_guess_nu1[2], best_guess_nu1[3]]
+nu1_dir = [nu_1[1], nu_1[2], nu_1[3]]
+dot_product = bf.dot_product(best_nu1_dir/bf.norm(best_nu1_dir), nu1_dir/bf.norm(nu1_dir))
+p_diff = (nu_1.p-(tau1_guess4-tau_1_vis).p)
+bf.plot_2d(dot_product, p_diff, 'dot_product(guess_nu1_hat, gen_nu1_hat)', '(gen_nu1-guess_nu1.p)', (.7, 1), (0, 500), (400, 800))
+
+
+plt.title('Quality of tau1 reconstruction\nTau dir = theta*a1')
+best_nu1_dir_theta = [best_guess_nu1_theta[1], best_guess_nu1_theta[2], best_guess_nu1_theta[3]]
+best_tau1_dir_theta = [tau1_guess4_theta[1], tau1_guess4_theta[2], tau1_guess4_theta[3]]
+nu1_dir = [nu_1[1], nu_1[2], nu_1[3]]
+tau1_dir = [tau_1[1], tau_1[2], tau_1[3]]
+dot_product_theta = np.clip(bf.dot_product(best_tau1_dir_theta /bf.norm(best_tau1_dir_theta), tau1_dir/bf.norm(tau1_dir)), -2, 2)
+nu_1_guess4 = tau1_guess4_theta-tau_1_vis
+p_diff_theta = (tau_1.p-(tau1_guess4).p)
+bf.plot_2d(dot_product_theta, p_diff_theta, 'dot_product(guess_tau1_modif_hat, gen_tau1_hat)', '(gen_tau1.p-guess_tau1_modif.p)', (0.9999, 1), (-200, 200), (1000, 600))
+
+
+
+
+plt.title('Quality of neutrino2 reconstruction - BEST CASE SCENARIO\nTau dir = sv')
+best_nu2_dir = [best_guess_nu2[1], best_guess_nu2[2], best_guess_nu2[3]]
+nu2_dir = [nu_2[1], nu_2[2], nu_2[3]]
+dot_product = bf.dot_product(best_nu2_dir/bf.norm(best_nu2_dir), nu2_dir/bf.norm(nu2_dir))
+p_diff = (nu_2.p-(tau2_guess4-tau_2_vis).p)
+bf.plot_2d(dot_product, p_diff, 'dot_product(guess_nu2_hat, gen_nu2_hat)', '(gen_nu2-guess_nu2.p)', (.7, 1), (0, 500), (400, 800))
+
+
+plt.title('Quality of neutrino2 reconstruction - BEST CASE SCENARIO\nTau dir = theta*a1')
+best_nu2_dir_theta = [best_guess_nu2_theta[1], best_guess_nu2_theta[2], best_guess_nu2_theta[3]]
+
+nu2_dir = [nu_2[1], nu_2[2], nu_2[3]]
+
+dot_product_theta = np.clip(bf.dot_product(best_nu2_dir_theta /bf.norm(best_nu2_dir_theta), nu2_dir/bf.norm(nu2_dir)), 0.9, 2)
+nu_2_guess4_theta = tau2_guess4_theta-tau_2_vis
+p_diff = (nu_2.p-(nu_2_guess4_theta).p)
+bf.plot_2d(dot_product_theta, p_diff_theta, 'dot_product(guess_nu2_modif_hat, gen_nu2_hat)', '(gen_nu2.p-guess_nu2_modif.p)', (0.998, 1), (-200, 200), (1000, 600))
+
+
+
+
+plt.title('Quality of tau2 reconstruction\nTau dir = theta*a1')
+best_tau2_dir_theta = [tau2_guess4_theta[1], tau2_guess4_theta[2], tau2_guess4_theta[3]]
+tau2_dir = [tau_2[1], tau_2[2], tau_2[3]]
+
+dot_product_theta = np.clip(bf.dot_product(best_tau2_dir_theta /np.clip(bf.norm(best_tau2_dir_theta), 0.0000000001, 10000000), tau2_dir/bf.norm(tau2_dir)), -2, 2)
+
+p_diff = (tau_2.p-(tau2_guess4).p)
+bf.plot_2d(dot_product_theta, p_diff_theta, 'dot_product(guess_tau2_modif_hat, gen_tau2_hat)', '(gen_tau2.p-guess_tau2_modif.p)', (0.9999, 1), (-200, 200), (1000, 600))
+
+
+
+plt.title('Fractionnal distance to gen neutrino in momentum')
+p_diff = (nu_1.p-nu_1_guess4.p)
+plt.hist(np.clip(p_diff, -30, 30), bins = 500)
+p_diff_no_modif = (nu_1.p-nu_guess4.p)
+plt.hist(np.clip(p_diff_no_modif, -30, 30), bins = 500)
+plt.xlabel('(nu_1.p-best_guess_nu1.p)')
+plt.grid()
+plt.show()
+plt.title('Dot product between gen nu direction and polarimetric nu direction')
+plt.hist(dot_product, bins = 200)
+plt.grid()
+plt.show()
+
+
+plt.title('Quality of neutrino reconstruction\nTau dir = sv')
+best_nu1_dir = [best_guess_nu1[1], best_guess_nu1[2], best_guess_nu1[3]]
+nu1_dir = [nu_1[1], nu_1[2], nu_1[3]]
+dot_product = bf.dot_product(best_nu1_dir/bf.norm(best_nu1_dir), nu1_dir/bf.norm(nu1_dir))
+p_diff = (nu_1.p-best_guess_nu1.p)/nu_1.p
+bf.plot_2d(dot_product, p_diff, 'dot_product(guess_nu1_hat, gen_nu1_hat)', '(gen_nu1-guess_nu1.p)/(nu_1.p)', (.7, 1), (0, 500), (400, 10000))
+
+plt.title('Quality of neutrino2 reconstruction\nTau dir = sv')
+best_nu2_dir = [best_guess_nu2[1], best_guess_nu2[2], best_guess_nu2[3]]
+nu2_dir = [nu_2[1], nu_2[2], nu_2[3]]
+dot_product2 = bf.dot_product(best_nu2_dir/bf.norm(best_nu2_dir), nu2_dir/bf.norm(nu2_dir))
+p_diff2 = (nu_2.p-best_guess_nu2.p)/nu_2.p
+bf.plot_2d(dot_product2, p_diff2, 'dot_product(guess_nu2_hat, gen_nu2_hat)', '(gen_nu2-guess_nu2.p)/(nu_2.p)', (.7, 1), (0, 500), (400, 10000))
+
+
+plt.title('Fractionnal distance to gen neutrino in momentum\nTau dir = sv')
+plt.hist(np.clip(p_diff, -30, 30), bins = 500, alpha = 0.5, label = 'Leading Tau neutrino')
+plt.hist(np.clip(p_diff2, -30, 30), bins = 500, alpha = 0.5, label = 'Subleading Tau neutrino')
+plt.xlabel('(nu.p-best_guess_nu.p)/nu.p')
+plt.legend()
+plt.grid()
+plt.show()
+
+plt.title('Dot product between gen nu direction and polarimetric nu direction\nTau dir = sv')
+plt.hist(dot_product, bins = 200, alpha = 0.5, label = 'Leading Tau neutrino')
+plt.hist(dot_product2, bins = 200, alpha = 0.5, label = 'Subleading Tau neutrino')
+plt.legend()
+plt.grid()
+plt.show()
+
+
+#Very nice - to present the repartition of data accross the range
+p_diff = bf.dot_product(best_nu1_dir/bf.norm(best_nu1_dir), nu1_dir/bf.norm(nu1_dir))
+p_diff2 = bf.dot_product(best_nu2_dir/bf.norm(best_nu2_dir), nu2_dir/bf.norm(nu2_dir))
+p_diff3 = bf.dot_product(best_nu1_dir_theta/bf.norm(best_nu1_dir_theta), nu1_dir/bf.norm(nu1_dir))
+p_diff4 = bf.dot_product(best_nu2_dir_theta/bf.norm(best_nu2_dir_theta), nu2_dir/bf.norm(nu2_dir))
+
+plt.title('Repartition of dot_product(gen_nu, best_guess_nu)')
+x = np.linspace(0, 1, 100)
+y = np.quantile(p_diff, x)
+y2 = np.quantile(p_diff2, x)
+
+y3 = np.quantile(p_diff3, x)
+y4 = np.quantile(p_diff4, x)
+plt.plot([-1000, 1000], [0.975, 0.975], 'b--', alpha = 0.5, label = '95percent enclosed')
+plt.plot([-1000, 1000], [0.025, 0.025], 'b--', alpha = 0.5)
+plt.plot([-1000, 1000], [0.835, 0.835], 'r--', alpha = 0.5, label = '67percent enclosed')
+plt.plot([-1000, 1000], [0.165, 0.165], 'r--', alpha = 0.5)
+plt.grid()
+plt.ylabel('Fraction of data below that value')
+plt.xlabel('dot_product(gen_nu, best_guess_nu)')
+
+
+plt.plot(y, x, 'k', label = 'Leading nu 95 percent between %.3f and %.3f\n67 percent between %.3f and %.3f'%(np.quantile(p_diff, 0.025), np.quantile(p_diff, 0.975), np.quantile(p_diff, 0.165), np.quantile(p_diff, 0.835)))
+plt.plot(y2, x, 'g', label = 'Subleading nu 95 percent between %.3f and %.3f\n67 percent between %.3f and %.3f'%(np.quantile(p_diff2, 0.025), np.quantile(p_diff2, 0.975), np.quantile(p_diff2, 0.165), np.quantile(p_diff2, 0.835)))
+
+plt.plot(y3, x, 'k--', label = 'Leading nu MODIFIED 95 percent between %.3f and %.3f\n67 percent between %.3f and %.3f'%(np.quantile(p_diff3, 0.025), np.quantile(p_diff3, 0.975), np.quantile(p_diff3, 0.165), np.quantile(p_diff3, 0.835)))
+plt.plot(y4, x, 'g--', label = 'Subleading nu MODIFIED 95 percent between %.3f and %.3f\n67 percent between %.3f and %.3f'%(np.quantile(p_diff4, 0.025), np.quantile(p_diff4, 0.975), np.quantile(p_diff4, 0.165), np.quantile(p_diff4, 0.835)))
+plt.legend()
+plt.show()
+
+#Very nice - to present the repartition of data accross the range
+p_diff = (nu_1.p-best_guess_nu1.p)/nu_1.p
+p_diff2 = (nu_2.p-best_guess_nu2.p)/nu_2.p
+
+
+p_diff3 = (nu_1.p-best_guess_nu1_theta.p)/nu_1.p
+p_diff4 = (nu_2.p-best_guess_nu2_theta.p)/nu_2.p
+
+plt.title('Repartition of (gen_nu.p  - best_guess_nu.p)/gen_nu.p data')
+x = np.linspace(0, 1, 100)
+y = np.quantile(p_diff, x)
+y2 = np.quantile(p_diff2, x)
+y3 = np.quantile(p_diff3, x)
+y4 = np.quantile(p_diff4, x)
+plt.plot([-1000, 1000], [0.975, 0.975], 'b--', alpha = 0.5, label = '95percent enclosed')
+plt.plot([-1000, 1000], [0.025, 0.025], 'b--', alpha = 0.5)
+plt.plot([-1000, 1000], [0.835, 0.835], 'r--', alpha = 0.5, label = '67percent enclosed')
+plt.plot([-1000, 1000], [0.165, 0.165], 'r--', alpha = 0.5)
+plt.grid()
+plt.ylabel('Fraction of data below that value')
+plt.xlabel('dot_product(gen_nu, best_guess_nu)')
+
+plt.plot(y, x, 'k', label = 'Leading nu 95 percent between %.3f and %.3f\n67 percent between %.3f and %.3f'%(np.quantile(p_diff, 0.025), np.quantile(p_diff, 0.975), np.quantile(p_diff, 0.165), np.quantile(p_diff, 0.835)))
+plt.plot(y2, x, 'g', label = 'Subleading nu 95 percent between %.3f and %.3f\n67 percent between %.3f and %.3f'%(np.quantile(p_diff2, 0.025), np.quantile(p_diff2, 0.975), np.quantile(p_diff2, 0.165), np.quantile(p_diff2, 0.835)))
+
+plt.plot(y3, x, 'k--', label = 'Leading nu MODIFIED 95 percent between %.3f and %.3f\n67 percent between %.3f and %.3f'%(np.quantile(p_diff3, 0.025), np.quantile(p_diff3, 0.975), np.quantile(p_diff3, 0.165), np.quantile(p_diff3, 0.835)))
+plt.plot(y4, x, 'g--', label = 'Subleading nu MODIFIED 95 percent between %.3f and %.3f\n67 percent between %.3f and %.3f'%(np.quantile(p_diff4, 0.025), np.quantile(p_diff4, 0.975), np.quantile(p_diff4, 0.165), np.quantile(p_diff4, 0.835)))
+plt.legend()
+plt.show()
+
+
+raise END
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -182,6 +415,8 @@ fraction_same = np.where(tau1_guess4.p - tau1_guess3.p==0, 1, 0)
 print(sum(fraction_same)/len(fraction_same))
 
 bf.plot_2d(gen_tau1_guess1.m, gen_tau1_guess2.m, 'gen_tau1_guess1.m', 'gen_tau1_guess2.m', (0, 1000), (0,1000))
+
+
 
 
 
