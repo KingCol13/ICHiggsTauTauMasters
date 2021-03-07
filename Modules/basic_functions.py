@@ -90,8 +90,8 @@ def plot_1d(qqty1, qqty2, label1, label2, xlim = (-100, 100), nb_bins = 1000):
     plt.hist((qqty1 - qqty2), bins = nb_bins, label = 'mean:%.2f std: %.2f'%(np.array(qqty1-qqty2).mean(), np.array(qqty1-qqty2).std()))
     plt.xlim(xlim[0], xlim[1])
     
-    plt.xlabel('%s - %s'%(label1, label2), fontsize = 'x-large')
-    plt.legend(prop = {'size':14})
+    plt.xlabel('%s - %s'%(label1, label2), fontsize = 'large')
+    plt.legend(prop = {'size':10})
     #plt.grid()
     #plt.show()
     return 0

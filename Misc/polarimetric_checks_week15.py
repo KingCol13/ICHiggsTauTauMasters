@@ -172,6 +172,7 @@ tau2_guess4 = Momentum4(tau2_guess4[0], tau2_guess4[1], tau2_guess4[2], tau2_gue
 
 
 # theta polarimetric reco taus
+
 tau1_guess1_theta = nu_1_guess1_theta + tau_1_vis
 tau1_guess2_theta = nu_1_guess2_theta + tau_1_vis
 
@@ -196,10 +197,34 @@ nu_2_guess4 = tau2_guess4_theta-tau_2_vis
 
 
 
+#The new polarimetric nus 
+nu_1_guess1_f, nu_1_guess2_f, nu_2_guess1_f, nu_2_guess2_f, best_guess_nu1_f, best_guess_nu2_f = polari.polarimetric_change_dir(df4, decay_mode1, decay_mode2)
+
+tau1_guess1_f = nu_1_guess1_f + tau_1_vis
+tau1_guess2_f = nu_1_guess2_f + tau_1_vis
+
+tau2_guess1_f  = nu_2_guess1_f  + tau_2_vis
+tau2_guess2_f  = nu_2_guess2_f  + tau_2_vis
+
+tau1_guess3_f  = best_guess_nu1_f  + tau_1_vis
+tau2_guess3_f  = best_guess_nu2_f  + tau_2_vis
+
+tau1_guess4_f  = tf.where(abs(tau1_guess1_f .p-tau_1.p)<=abs(tau1_guess2_f .p-tau_1.p), tau1_guess1_f , tau1_guess2_f )
+tau1_guess4_f = Momentum4(tau1_guess4_f[0], tau1_guess4_f[1], tau1_guess4_f[2], tau1_guess4_f[3])
+
+tau2_guess4_f  = tf.where(abs(tau2_guess1_f.p-tau_2.p)<=abs(tau2_guess2_f.p-tau_2.p), tau2_guess1_f, tau2_guess2_f)
+tau2_guess4_f = Momentum4(tau2_guess4_f[0], tau2_guess4_f[1], tau2_guess4_f[2], tau2_guess4_f[3])
+
+
+
 
 ######### another way to check best solution - met ####
 reco4_met_x = nu_1_guess4.p_x + nu_2_guess4.p_x
 reco3_met_x = nu_1_guess3.p_x + nu_2_guess3.p_x
+reco11_met_x = nu_1_guess1_theta.p_x + nu_2_guess1_theta.p_x
+reco22_met_x = nu_1_guess2_theta.p_x + nu_2_guess2_theta.p_x
+reco12_met_x = nu_1_guess1_theta.p_x + nu_2_guess2_theta.p_x
+reco21_met_x = nu_1_guess2_theta.p_x + nu_2_guess1_theta.p_x
 
 plt.title('Prelimiary checks - can met be used for solution picking\nupdated polarimetric method')
 bf.plot_2d(df4['metx']-reco4_met_x, df4['metx']-reco3_met_x, 'metx - reco4_met_x (best tau p)', 'metx - reco4_met_x (best Higgs mass)', (-500, 500), (-500, 500))
@@ -207,6 +232,154 @@ bf.plot_2d(df4['metx']-reco4_met_x, df4['metx']-reco3_met_x, 'metx - reco4_met_x
 
 reco4_met_y = nu_1_guess4.p_y + nu_2_guess4.p_y
 reco3_met_y = nu_1_guess3.p_y + nu_2_guess3.p_y
+
+def met_choice(Higgs_option1, Higgs_option2, nu_1_option1, nu_2_option1,nu_1_option2, nu_2_option2, alpha = 0, beta = 0):
+    global df4
+    global Higgs11, Higgs22, Higgs21, Higgs12 
+    
+    reco_met_x_option1 = nu_1_option1.p_x + nu_2_option1.p_x
+    reco_met_x_option2 = nu_1_option2.p_x + nu_2_option2.p_x
+    
+    reco_met_y_option1 = nu_1_option1.p_y + nu_2_option1.p_y
+    reco_met_y_option2 = nu_1_option2.p_y + nu_2_option2.p_y
+    
+    diff_Higgs1 = (Higgs_option1.m-m_Higgs)**2
+    diff_Higgs2 = (Higgs_option2.m-m_Higgs)**2
+    
+    diff_metx1 = (reco_met_x_option1 - df4['metx'])**2
+    diff_mety1 = (reco_met_y_option1 - df4['mety'])**2
+    
+    diff_metx2 = (reco_met_x_option2 - df4['metx'])**2
+    diff_mety2 = (reco_met_y_option2 - df4['mety'])**2
+    
+    total_diff1 = diff_Higgs1 + alpha * diff_metx1 + beta * diff_mety1
+    total_diff2 = diff_Higgs2 + alpha * diff_metx2 + beta * diff_mety2
+    
+    better_higgs = tf.where(total_diff1 <= total_diff2, Higgs_option1, Higgs_option2)
+    
+    better_nu1 = tf.where(total_diff1 <= total_diff2, nu_1_option1, nu_1_option2)
+    
+    better_nu2 = tf.where(total_diff1 <= total_diff2, nu_2_option1, nu_2_option2)
+    
+    better_higgs = Momentum4(better_higgs[0], better_higgs[1], better_higgs[2], better_higgs[3])
+    
+    better_nu1 = Momentum4(better_nu1[0], better_nu1[1], better_nu1[2], better_nu1[3])
+    
+    better_nu2 = Momentum4(better_nu2[0], better_nu2[1], better_nu2[2], better_nu2[3])
+    
+    return better_higgs, better_nu1, better_nu2
+    
+    
+
+alphas = np.linspace (0.3, 0.7, 20)
+
+list_alpha_f = []
+fraction_alpha_beta_f = []
+list_beta_f = []
+
+##### Now we need to make the selection
+m_Higgs = 125.10 #GeV
+Higgs11_f = tau1_guess1_f + tau2_guess1_f
+Higgs22_f  = tau1_guess2_f + tau2_guess2_f
+Higgs12_f  = tau1_guess1_f + tau2_guess2_f
+Higgs21_f  = tau1_guess2_f + tau2_guess1_f
+Higgs3_f = tau1_guess3_f + tau2_guess3_f
+Higgs4_f  = tau1_guess4_f + tau2_guess4_f
+
+for alpha in alphas:
+    for beta in alphas:
+        higgs_best1, nu_1_best1, nu_2_best1 = met_choice(Higgs11_f, Higgs22_f, nu_1_guess1_f, nu_2_guess1_f, nu_1_guess2_f, nu_2_guess2_f, alpha, beta)
+
+        higgs_best2, nu_1_best2, nu_2_best2 = met_choice(Higgs12_f , Higgs21_f, nu_1_guess1_f, nu_2_guess2_f, nu_1_guess2_f, nu_2_guess1_f, alpha, beta)
+
+        higgs_best, nu_1_best, nu_2_best = met_choice(higgs_best1, higgs_best2, nu_1_best1, nu_2_best1, nu_1_best2, nu_2_best2, alpha, beta)
+        fraction = np.where(higgs_best.eta == Higgs4_f.eta, 1, 0)
+        fraction = sum(fraction)/len(fraction)
+        print (fraction)
+        fraction_alpha_beta_f.append(fraction)
+        list_alpha_f.append(alpha)
+        list_beta_f.append(beta)
+        
+        
+plt.figure()
+plt.xlabel('alpha_met_x', fontsize = 'x-large')
+plt.ylabel('alpha_met_y', fontsize = 'x-large')
+plt.title(' Fraction of times the best tau_p solution also minimises\nDeltaM^2+alpha_x*DeltaMetx^2+alpha_y*DeltaMety^2', fontsize = 'x-large')
+fraction_alpha_beta_f = np.array(fraction_alpha_beta_f)
+best = int(np.where(fraction_alpha_beta_f == fraction_alpha_beta_f.max())[0][0])
+plt.scatter(list_alpha_f, list_beta_f,   s = 2.5, alpha=1, c = fraction_alpha_beta_f, norm=colors.LogNorm(), label = 'Geometrically Shifted_taus:\nBest fraction: %.3f, at alpha_x = %.3f, alpha_y = %.3f'%(fraction_alpha_beta_f[best], list_alpha_f[best], list_beta_f[best]))
+plt.colorbar()
+plt.legend()
+
+plt.savefig('0_to_1_long_new3.png')
+
+
+
+
+list_alpha = []
+fraction_alpha_beta = []
+list_beta = []
+
+##### Now we need to make the selection
+m_Higgs = 125.10 #GeV
+Higgs11 = tau1_guess1_theta + tau2_guess1_theta
+Higgs22 = tau1_guess2_theta + tau2_guess2_theta
+Higgs12 = tau1_guess1_theta + tau2_guess2_theta
+Higgs21 = tau1_guess2_theta + tau2_guess1_theta
+Higgs3 = tau1_guess3_theta + tau2_guess3_theta
+Higgs4 = tau1_guess4_theta + tau2_guess4_theta
+
+for alpha in alphas:
+    for beta in alphas:
+        higgs_best1, nu_1_best1, nu_2_best1 = met_choice(Higgs11, Higgs22, nu_1_guess1_theta, nu_2_guess1_theta, nu_1_guess2_theta, nu_2_guess2_theta, alpha, beta)
+
+        higgs_best2, nu_1_best2, nu_2_best2 = met_choice(Higgs12, Higgs21, nu_1_guess1_theta, nu_2_guess2_theta, nu_1_guess2_theta, nu_2_guess1_theta, alpha, beta)
+
+        higgs_best, nu_1_best, nu_2_best = met_choice(higgs_best1, higgs_best2, nu_1_best1, nu_2_best1, nu_1_best2, nu_2_best2, alpha, beta)
+        fraction = np.where(higgs_best.eta == Higgs4.eta, 1, 0)
+        fraction = sum(fraction)/len(fraction)
+        print (fraction)
+        fraction_alpha_beta.append(fraction)
+        list_alpha.append(alpha)
+        list_beta.append(beta)
+     
+     
+
+beta = 0
+alpha = 0
+
+
+higgs_best1, nu_1_best1, nu_2_best1 = met_choice(Higgs11, Higgs22, nu_1_guess1_theta, nu_2_guess1_theta, nu_1_guess2_theta, nu_2_guess2_theta, alpha, beta)
+
+higgs_best2, nu_1_best2, nu_2_best2 = met_choice(Higgs12, Higgs21, nu_1_guess1_theta, nu_2_guess2_theta, nu_1_guess2_theta, nu_2_guess1_theta, alpha, beta)
+
+higgs_best, nu_1_best, nu_2_best = met_choice(higgs_best1, higgs_best2, nu_1_best1, nu_2_best1, nu_1_best2, nu_2_best2, alpha, beta)
+fraction = np.where(higgs_best.eta == Higgs4.eta, 1, 0)
+fraction = sum(fraction)/len(fraction)
+print (fraction)
+
+     
+     
+     
+#from mpl_toolkits.mplot3d import axes3d
+
+plt.figure()
+plt.xlabel('alpha_met_x', fontsize = 'x-large')
+plt.ylabel('alpha_met_y', fontsize = 'x-large')
+plt.title(' Fraction of times the best tau_p solution also minimises\nDeltaM^2+alpha_x*DeltaMetx^2+alpha_y*DeltaMety^2', fontsize = 'x-large')
+
+fraction_alpha_beta = np.array(fraction_alpha_beta)
+best = int(np.where(fraction_alpha_beta == fraction_alpha_beta.max())[0][0])
+plt.scatter(list_alpha, list_beta,   s = 2.5, alpha=1, c = fraction_alpha_beta, norm=colors.LogNorm(), label = 'Naively Shifted_taus:\nBest fraction: %.3f, at alpha_x = %.3f, alpha_y = %.3f'%(fraction_alpha_beta[best], list_alpha[best], list_beta[best]))
+plt.colorbar()
+plt.legend()
+
+plt.savefig('0_to_1_long_old2.png')
+
+
+
+raise END
+#############################################
 
 plt.title('Prelimiary checks - can met be used for solution picking\nupdated polarimetric method')
 bf.plot_2d(abs(df4['mety']-reco4_met_y)/df4['metcov11'], abs(df4['mety']-reco3_met_y)/df4['metcov11'], 'abs(mety - reco4_met_y (best tau p))/metcov11', 'abs(mety - reco4_met_y(best Higgs mass))/metcov11', (-2, 2), (-2, 2), (500, 500))
@@ -234,7 +407,7 @@ bf.plot_2d(abs(df4['mety']-reco4_met_y), abs(df4['mety']-reco3_met_y), 'abs(mety
 
 
 raise END
-######### check that same direction when theta isn't theta max 
+######### check that same direction when f isn't theta max 
 m_vis = tau_1_vis.m
 m_tau = 1.77686
 m_vis = np.where(tau_1_vis.m==0, 1.260, tau_1_vis.m)
@@ -252,7 +425,6 @@ theta_GJ_max = np.arcsin(np.clip((m_tau**2 - m_vis**2)/(2*m_tau*tau_1_vis.p), -1
 
 
 tau1_guess4_theta_no_max = tf.where(theta_GJ >= theta_GJ_max, tau1_guess4_theta, tau1_guess4_theta)
-
 tau1_guess4_no_max = tf.where(theta_GJ >= theta_GJ_max, tau1_guess4_theta, tau1_guess4)
 
 tau1_guess4_theta_no_max = Momentum4(tau1_guess4_theta_no_max[0], tau1_guess4_theta_no_max[1], tau1_guess4_theta_no_max[2], tau1_guess4_theta_no_max[3])

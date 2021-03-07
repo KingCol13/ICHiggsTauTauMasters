@@ -3,7 +3,7 @@ import numpy as np
 from pylorentz import Momentum4
 from pylorentz import Vector4
 from pylorentz import Position4
-import polarimetric_module as polari
+import polarimetric_module_checks_week15 as polari
 import alpha_module as am
 import basic_functions as bf
 import tensorflow as tf
@@ -21,23 +21,27 @@ class Configurations:
         alpha_1, alpha_2 = am.alphas_clamped(df4, decay_mode1, decay_mode2)
         alphas = [alpha_1, alpha_2]
         
-        nu1_guess, nu2_guess = polari.polarimetric(df4, decay_mode1, decay_mode2)
-
+        _, _, _, _, nu1_guess, nu2_guess = polari.polarimetric_theta_max(df4, decay_mode1, decay_mode2)
+        _, _, _, _, nu1_OldGuess, nu2_OldGuess = polari.polarimetric(df4, decay_mode1, decay_mode2)
+        
         nu1_guess = [nu1_guess.e, nu1_guess.p_x, nu1_guess.p_y, nu1_guess.p_z]
         nu2_guess = [nu2_guess.e, nu2_guess.p_x, nu2_guess.p_y, nu2_guess.p_z]
         
+        nu1_OldGuess = [nu1_OldGuess.e, nu1_OldGuess.p_x, nu1_OldGuess.p_y, nu1_OldGuess.p_z]
+        nu2_OldGuess = [nu2_OldGuess.e, nu2_OldGuess.p_x, nu2_OldGuess.p_y, nu2_OldGuess.p_z]
         
-        sv_cov = [df4["svcov00_1"], df4["svcov01_1"],df4["svcov02_1"],df4["svcov10_1"], 
-                df4["svcov11_1"], df4["svcov12_1"], df4["svcov20_1"], df4["svcov21_1"], 
-                df4["svcov22_1"], df4["svcov00_2"], df4["svcov01_2"], df4["svcov02_2"],
-                df4["svcov10_2"], df4["svcov11_2"], df4["svcov12_2"], df4["svcov20_2"],
-                df4["svcov21_2"], df4["svcov22_2"],]
+        
+        #sv_cov = [df4["svcov00_1"], df4["svcov01_1"],df4["svcov02_1"],df4["svcov10_1"], 
+                #df4["svcov11_1"], df4["svcov12_1"], df4["svcov20_1"], df4["svcov21_1"], 
+                #df4["svcov22_1"], df4["svcov00_2"], df4["svcov01_2"], df4["svcov02_2"],
+                #df4["svcov10_2"], df4["svcov11_2"], df4["svcov12_2"], df4["svcov20_2"],
+                #df4["svcov21_2"], df4["svcov22_2"],]
 
-        ip_cov = [df4["ipcov00_1"], df4["ipcov01_1"],df4["ipcov02_1"],df4["ipcov10_1"], 
-                df4["ipcov11_1"], df4["ipcov12_1"], df4["ipcov20_1"], df4["ipcov21_1"], 
-                df4["ipcov22_1"],df4["ipcov00_2"],df4["ipcov01_2"], 
-                df4["ipcov02_2"],df4["ipcov10_2"],df4["ipcov11_2"],df4["ipcov12_2"],
-                df4["ipcov20_2"],df4["ipcov21_2"], df4["ipcov22_2"],]
+        #ip_cov = [df4["ipcov00_1"], df4["ipcov01_1"],df4["ipcov02_1"],df4["ipcov10_1"], 
+                #df4["ipcov11_1"], df4["ipcov12_1"], df4["ipcov20_1"], df4["ipcov21_1"], 
+                #df4["ipcov22_1"],df4["ipcov00_2"],df4["ipcov01_2"], 
+                #df4["ipcov02_2"],df4["ipcov10_2"],df4["ipcov11_2"],df4["ipcov12_2"],
+                #df4["ipcov20_2"],df4["ipcov21_2"], df4["ipcov22_2"],]
 
 
         met_cov = [df4["metcov00"], df4["metcov01"],df4["metcov10"], df4["metcov11"] ]
@@ -246,31 +250,31 @@ class Configurations:
         self.x8 = tf.transpose(x8)
         
         
-        x9 = np.array([
+        #x9 = np.array([
                     #smear_px,
                     #smear_py,
-                    bf.Mom4_to_tf(tau_1_vis.e),    #4
-                    bf.Mom4_to_tf(tau_1_vis.p_x),  #4
-                    bf.Mom4_to_tf(tau_1_vis.p_y),  #4
-                    bf.Mom4_to_tf(tau_1_vis.p_z),  #4
-                    bf.Mom4_to_tf(tau_2_vis.e),    #5
-                    bf.Mom4_to_tf(tau_2_vis.p_x),  #5
-                    bf.Mom4_to_tf(tau_2_vis.p_y),  #5
-                    bf.Mom4_to_tf(tau_2_vis.p_z),  #5
-                    df4["ip_x_1"], df4["ip_y_1"], df4["ip_z_1"], #6
-                    df4["ip_x_2"], df4["ip_y_2"], df4["ip_z_2"], #7
-                    df4["ip_sig_2"], df4["ip_sig_1"], #8,9
-                    df4["met"],                #1
-                    df4["metx"],df4["mety"],   #2,3
-                    df4["sv_x_1"], df4["sv_y_1"], df4["sv_z_1"], #10
-                    df4["sv_x_2"], df4["sv_y_2"], df4["sv_z_2"], #11
-                    *sv_cov,
-                    *ip_cov,
-                    *met_cov,
+                    #bf.Mom4_to_tf(tau_1_vis.e),    #4
+                    #bf.Mom4_to_tf(tau_1_vis.p_x),  #4
+                    #bf.Mom4_to_tf(tau_1_vis.p_y),  #4
+                    #bf.Mom4_to_tf(tau_1_vis.p_z),  #4
+                    #bf.Mom4_to_tf(tau_2_vis.e),    #5
+                    #bf.Mom4_to_tf(tau_2_vis.p_x),  #5
+                    #bf.Mom4_to_tf(tau_2_vis.p_y),  #5
+                    #bf.Mom4_to_tf(tau_2_vis.p_z),  #5
+                    #df4["ip_x_1"], df4["ip_y_1"], df4["ip_z_1"], #6
+                    #df4["ip_x_2"], df4["ip_y_2"], df4["ip_z_2"], #7
+                    #df4["ip_sig_2"], df4["ip_sig_1"], #8,9
+                    #df4["met"],                #1
+                    #df4["metx"],df4["mety"],   #2,3
+                    #df4["sv_x_1"], df4["sv_y_1"], df4["sv_z_1"], #10
+                    #df4["sv_x_2"], df4["sv_y_2"], df4["sv_z_2"], #11
+                    #*sv_cov,
+                    #*ip_cov,
+                    #*met_cov,
                     
                     
-                    ])
-        self.x9 = tf.transpose(x9)
+                    #])
+        #self.x9 = tf.transpose(x9)
 
 
         x10 = np.array([
@@ -328,57 +332,57 @@ class Configurations:
         self.x11 = tf.transpose(x11)
         
                 
-        x12 = np.array([
+        #x12 = np.array([
                     #smear_px,
                     #smear_py,
-                    bf.Mom4_to_tf(tau_1_vis.e),    #4
-                    bf.Mom4_to_tf(tau_1_vis.p_x),  #4
-                    bf.Mom4_to_tf(tau_1_vis.p_y),  #4
-                    bf.Mom4_to_tf(tau_1_vis.p_z),  #4
-                    bf.Mom4_to_tf(tau_2_vis.e),    #5
-                    bf.Mom4_to_tf(tau_2_vis.p_x),  #5
-                    bf.Mom4_to_tf(tau_2_vis.p_y),  #5
-                    bf.Mom4_to_tf(tau_2_vis.p_z),  #5
-                    df4["ip_x_1"], df4["ip_y_1"], #df4["ip_z_1"], #6
-                    df4["ip_x_2"], df4["ip_y_2"], #df4["ip_z_2"], #7
+                    #bf.Mom4_to_tf(tau_1_vis.e),    #4
+                    #bf.Mom4_to_tf(tau_1_vis.p_x),  #4
+                    #bf.Mom4_to_tf(tau_1_vis.p_y),  #4
+                    #bf.Mom4_to_tf(tau_1_vis.p_z),  #4
+                    #bf.Mom4_to_tf(tau_2_vis.e),    #5
+                    #bf.Mom4_to_tf(tau_2_vis.p_x),  #5
+                    #bf.Mom4_to_tf(tau_2_vis.p_y),  #5
+                    #bf.Mom4_to_tf(tau_2_vis.p_z),  #5
+                    #df4["ip_x_1"], df4["ip_y_1"], #df4["ip_z_1"], #6
+                    #df4["ip_x_2"], df4["ip_y_2"], #df4["ip_z_2"], #7
                     #df4["ip_sig_2"], df4["ip_sig_1"], #8,9
                     #df4["met"],                #1
                     #df4["metx"],df4["mety"],   #2,3
                     #df4["sv_x_1"], df4["sv_y_1"], df4["sv_z_1"], #10
                     #df4["sv_x_2"], df4["sv_y_2"], df4["sv_z_2"], #11
                     #*sv_cov,
-                    *ip_cov,
+                    #*ip_cov,
                     #*met_cov,
                     
                     
-                    ])
-        self.x12 = tf.transpose(x12)
+                    #])
+        #self.x12 = tf.transpose(x12)
 
 
 
-        x13 = np.array([
+        #x13 = np.array([
                     #smear_px,
                     #smear_py,
-                    bf.Mom4_to_tf(tau_1_vis.e),    #4
-                    bf.Mom4_to_tf(tau_1_vis.p_x),  #4
-                    bf.Mom4_to_tf(tau_1_vis.p_y),  #4
-                    bf.Mom4_to_tf(tau_1_vis.p_z),  #4
-                    bf.Mom4_to_tf(tau_2_vis.e),    #5
-                    bf.Mom4_to_tf(tau_2_vis.p_x),  #5
-                    bf.Mom4_to_tf(tau_2_vis.p_y),  #5
-                    bf.Mom4_to_tf(tau_2_vis.p_z),  #5
+                    #bf.Mom4_to_tf(tau_1_vis.e),    #4
+                    #bf.Mom4_to_tf(tau_1_vis.p_x),  #4
+                    #bf.Mom4_to_tf(tau_1_vis.p_y),  #4
+                    #bf.Mom4_to_tf(tau_1_vis.p_z),  #4
+                    #bf.Mom4_to_tf(tau_2_vis.e),    #5
+                    #bf.Mom4_to_tf(tau_2_vis.p_x),  #5
+                    #bf.Mom4_to_tf(tau_2_vis.p_y),  #5
+                    #bf.Mom4_to_tf(tau_2_vis.p_z),  #5
                     #df4["ip_x_1"], df4["ip_y_1"], df4["ip_z_1"], #6
                     #df4["ip_x_2"], df4["ip_y_2"], df4["ip_z_2"], #7
                     #df4["ip_sig_2"], df4["ip_sig_1"], #8,9
                     #df4["met"],                #1
                     #df4["metx"],df4["mety"],   #2,3
-                    df4["sv_x_1"], df4["sv_y_1"], df4["sv_z_1"], #10
-                    df4["sv_x_2"], df4["sv_y_2"], df4["sv_z_2"], #11
-                    *sv_cov,
+                    #df4["sv_x_1"], df4["sv_y_1"], df4["sv_z_1"], #10
+                    #df4["sv_x_2"], df4["sv_y_2"], df4["sv_z_2"], #11
+                    #*sv_cov,
                     #*ip_cov,
                     #*met_cov,              
-                    ])
-        self.x13 = tf.transpose(x13)
+                    #])
+        #self.x13 = tf.transpose(x13)
 
 
         x14 = np.array([
@@ -583,34 +587,34 @@ class Configurations:
         self.x20 = tf.transpose(x20)
         
         
-        x21 = np.array([
+        #x21 = np.array([
                     #smear_px,
                     #smear_py,
-                    bf.Mom4_to_tf(tau_1_vis.e),    #4
-                    bf.Mom4_to_tf(tau_1_vis.p_x),  #4
-                    bf.Mom4_to_tf(tau_1_vis.p_y),  #4
-                    bf.Mom4_to_tf(tau_1_vis.p_z),  #4
-                    bf.Mom4_to_tf(tau_2_vis.e),    #5
-                    bf.Mom4_to_tf(tau_2_vis.p_x),  #5
-                    bf.Mom4_to_tf(tau_2_vis.p_y),  #5
-                    bf.Mom4_to_tf(tau_2_vis.p_z),  #5
-                    df4["ip_x_1"], df4["ip_y_1"], df4["ip_z_1"], #6
-                    df4["ip_x_2"], df4["ip_y_2"], df4["ip_z_2"], #7
-                    df4["ip_sig_2"], df4["ip_sig_1"], #8,9
-                    df4["met"],                #1
-                    df4["metx"],df4["mety"],   #2,3
+                    #bf.Mom4_to_tf(tau_1_vis.e),    #4
+                    #bf.Mom4_to_tf(tau_1_vis.p_x),  #4
+                    #bf.Mom4_to_tf(tau_1_vis.p_y),  #4
+                    #bf.Mom4_to_tf(tau_1_vis.p_z),  #4
+                    #bf.Mom4_to_tf(tau_2_vis.e),    #5
+                    #bf.Mom4_to_tf(tau_2_vis.p_x),  #5
+                    #bf.Mom4_to_tf(tau_2_vis.p_y),  #5
+                    #bf.Mom4_to_tf(tau_2_vis.p_z),  #5
+                    #df4["ip_x_1"], df4["ip_y_1"], df4["ip_z_1"], #6
+                    #df4["ip_x_2"], df4["ip_y_2"], df4["ip_z_2"], #7
+                    #df4["ip_sig_2"], df4["ip_sig_1"], #8,9
+                    #df4["met"],                #1
+                    #df4["metx"],df4["mety"],   #2,3
                     #df4["sv_x_1"], df4["sv_y_1"], df4["sv_z_1"], #10
                     #df4["sv_x_2"], df4["sv_y_2"], df4["sv_z_2"], #11
                     #*sv_cov,
-                    *ip_cov,
-                    *met_cov,
+                    #*ip_cov,
+                    #*met_cov,
                     #*guess1_1, *guess2_1 #13
                     #*guess1_2, *guess2_2 #14
                     #*nu1_guess, *nu2_guess #15
-                    *alphas
+                    #*alphas
                     
-                    ])
-        self.x21 = tf.transpose(x21)
+                    #])
+        #self.x21 = tf.transpose(x21)
 
         x22 = np.array([
                     #smear_px,
@@ -641,6 +645,35 @@ class Configurations:
                     ])
         self.x22 = tf.transpose(x22)
 
+        #x23 = np.array([
+                    #smear_px,
+                    #smear_py,
+                    #bf.Mom4_to_tf(tau_1_vis.e),    #4
+                    #bf.Mom4_to_tf(tau_1_vis.p_x),  #4
+                    #bf.Mom4_to_tf(tau_1_vis.p_y),  #4
+                    #bf.Mom4_to_tf(tau_1_vis.p_z),  #4
+                    #bf.Mom4_to_tf(tau_2_vis.e),    #5
+                    #bf.Mom4_to_tf(tau_2_vis.p_x),  #5
+                    #bf.Mom4_to_tf(tau_2_vis.p_y),  #5
+                    #bf.Mom4_to_tf(tau_2_vis.p_z),  #5
+                    #df4["ip_x_1"], df4["ip_y_1"], df4["ip_z_1"], #6
+                    #df4["ip_x_2"], df4["ip_y_2"], df4["ip_z_2"], #7
+                    #df4["ip_sig_2"], df4["ip_sig_1"], #8,9
+                    #df4["met"],                #1
+                    #df4["metx"],df4["mety"],   #2,3
+                    #df4["sv_x_1"], df4["sv_y_1"], df4["sv_z_1"], #10
+                    #df4["sv_x_2"], df4["sv_y_2"], df4["sv_z_2"], #11
+                    #*sv_cov,
+                    #*ip_cov,
+                    #*met_cov,
+                    #*guess1_1, *guess2_1 #13
+                    #*guess1_2, *guess2_2 #14
+                    #*nu1_guess, *nu2_guess, #15
+                    #*alphas
+                    
+                    #])
+        #self.x23 = tf.transpose(x23)
+
         x23 = np.array([
                     #smear_px,
                     #smear_py,
@@ -660,16 +693,13 @@ class Configurations:
                     #df4["sv_x_1"], df4["sv_y_1"], df4["sv_z_1"], #10
                     #df4["sv_x_2"], df4["sv_y_2"], df4["sv_z_2"], #11
                     #*sv_cov,
-                    *ip_cov,
-                    *met_cov,
+                    #*ip_cov,
+                    #*met_cov,
                     #*guess1_1, *guess2_1 #13
                     #*guess1_2, *guess2_2 #14
-                    *nu1_guess, *nu2_guess, #15
-                    *alphas
-                    
+                    *nu1_OldGuess, *nu2_OldGuess #15
                     ])
-        self.x23 = tf.transpose(x23)
-        
+        self.x23 = np.transpose(x23)
         
         
         x24 = np.array([
