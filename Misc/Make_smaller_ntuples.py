@@ -26,10 +26,10 @@ import polarimetric_module as polari
 import alpha_module as am
 
 
-tau_mode1 = 10
-tau_mode2 = 1
-decay_mode1 = 10
-decay_mode2 = 0
+tau_mode1 = 0
+tau_mode2 = 10
+decay_mode1 = 0
+decay_mode2 = 10
 
 if len(sys.argv) == 5:
     tau_mode1 = int(sys.argv[1])
@@ -118,8 +118,8 @@ df4 = tree.pandas.df(variables4)
 print('Tree made')
 
 df4 = df4[
-      (df4["tau_decay_mode_1"] == tau_mode1) 
-    & (df4["tau_decay_mode_2"] == tau_mode2) 
+      #(df4["tau_decay_mode_1"] == tau_mode1) 
+    (df4["tau_decay_mode_2"] == tau_mode2) 
     & (df4["mva_dm_1"] == decay_mode1) 
     & (df4["mva_dm_2"] == decay_mode2)
     & (df4["gen_nu_p_1"] > -4000)
@@ -142,7 +142,7 @@ tree = uproot.newtree(treeBranches, title="ntuple", compression=uproot.ZLIB(3))
 
 
 sys.path.append("/home/acraplet/Alie/Masters/")
-with uproot.recreate("MVAFILE_full_10_0.root") as f:
+with uproot.recreate("MVAFILE_full_0_10.root") as f:
     f["ntuple"] = tree
     f["ntuple"].extend(branchDict)
 

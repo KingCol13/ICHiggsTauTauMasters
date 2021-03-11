@@ -24,7 +24,7 @@ from matplotlib import colors
 tau_mode1 = 10
 tau_mode2 = 10
 decay_mode1 = 10
-decay_mode2 = 10
+decay_mode2 = 0
 
 
 # stop tensorflow trying to overfill GPU memory
@@ -45,7 +45,7 @@ from pylorentz import Vector4
 from pylorentz import Position4
 
 # loading the tree
-tree = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_10_10_checks.root")["ntuple"]
+tree = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_10_0.root")["ntuple"]
 
 
 #tree = uproot.open("/home/acraplet/Alie/Masters/ICHiggsTauTauMasters/MVAFILE_AllHiggs_tt_reco_10_10_phitt.root")["ntuple"]
@@ -65,15 +65,15 @@ momenta_features = [ "pi_E_1", "pi_px_1", "pi_py_1", "pi_pz_1", #leading charged
               #subleading neutral pi 4-momentum
               "gen_nu_p_1", "gen_nu_phi_1", "gen_nu_eta_1", #leading neutrino, gen level
               "gen_nu_p_2", "gen_nu_phi_2", "gen_nu_eta_2", #subleading neutrino, gen level  
-              "reco_nu_p_1", "reco_nu_phi_1", "reco_nu_eta_1",
-              "reco_nu_p_2", "reco_nu_phi_2", "reco_nu_eta_2",
+              #"reco_nu_p_1", "reco_nu_phi_1", "reco_nu_eta_1",
+              #"reco_nu_p_2", "reco_nu_phi_2", "reco_nu_eta_2",
               
               
-              "reco2_nu_p_1", "reco2_nu_phi_1", "reco2_nu_eta_1",
-              "reco2_nu_p_2", "reco2_nu_phi_2", "reco2_nu_eta_2",
+              #"reco2_nu_p_1", "reco2_nu_phi_1", "reco2_nu_eta_1",
+              #"reco2_nu_p_2", "reco2_nu_phi_2", "reco2_nu_eta_2",
               
-              "pola2_nu_p_1", "pola2_nu_phi_1", "pola2_nu_eta_1",
-              "pola2_nu_p_2", "pola2_nu_phi_2", "pola2_nu_eta_2",
+              #"pola2_nu_p_1", "pola2_nu_phi_1", "pola2_nu_eta_1",
+              #"pola2_nu_p_2", "pola2_nu_phi_2", "pola2_nu_eta_2",
               
               
 
@@ -89,11 +89,11 @@ other_features = [ #"ip_x_1", "ip_y_1", "ip_z_1",        #leading impact paramet
                    #"y_1_1", "y_1_2",
                    #"ip_sig_1", "ip_sig_2",
                    #"gen_phitt", "pseudo_phitt",
-                   "pv_angle", "pseudo_pv_angle",
-                   "aco_angle_1", "aco_angle_6",
-                   "reco_pv_angle", "reco2_pv_angle", 
-                   "pola2_pv_angle", "pola4_pv_angle",
-                   "pola3_pv_angle", "pola_pv_angle"
+                   "pv_angle", #"pseudo_pv_angle",
+                   "aco_angle_1", "aco_angle_6",  "aco_angle_5", 
+                   #"reco_pv_angle", "reco2_pv_angle", 
+                   #"pola2_pv_angle", "pola4_pv_angle",
+                   #"pola3_pv_angle", "pola_pv_angle"
                    
                    
                    #"reco_phitt", "reco2_phitt", "pola_phitt", "pola2_phitt"
@@ -123,12 +123,12 @@ print('Check 1')
 df4 = tree.pandas.df(variables4)
 
 df4 = df4[
-      (df4["tau_decay_mode_1"] == tau_mode1) 
-    & (df4["tau_decay_mode_2"] == tau_mode2) 
-    & (df4["mva_dm_1"] == decay_mode1) 
+      #(df4["tau_decay_mode_1"] == tau_mode1) 
+    #& (df4["tau_decay_mode_2"] == tau_mode2) 
+    (df4["mva_dm_1"] == decay_mode1) 
     & (df4["mva_dm_2"] == decay_mode2)
-    & (df4["pv_angle"] > -4000)
-    #& (df4["gen_nu_p_2"] > -4000)
+    #& (df4["pv_angle"] > -4000)
+    & (df4["aco_angle_5"] > -4000)
     #& (df4["pi_E_1"] != 0)
     #& (df4["pi_E_2"] != 0)
     #& (df4["sv_x_1"] != 0)
@@ -145,9 +145,6 @@ df_sm = df4[
 ]
 
 
-bf.plot_2d(df_ps['pv_angle'], df_ps['pola2_pv_angle'], 'pv_angle', 'pola2_pv_angle')
-plt.show()
-
 def sm_ps(angle, marker):
     bins_array = np.linspace(0, 2*np.pi, 16)
     zeros = np.linspace(0, 0, 16)+1
@@ -155,6 +152,31 @@ def sm_ps(angle, marker):
     hist_ps = np.histogram(df_ps[angle], bins = bins_array)
     plt.plot(bins_array[:-1], hist_sm[0]/hist_ps[0], marker, alpha = 0.7, label = angle)
     plt.plot(bins_array[:-1], zeros[:-1], 'k-')
+
+sm_ps('aco_angle_5', 'g-')
+#sm_ps('pola1_pv_angle', '-')
+#sm_ps('pola_pv_angle', 'r-')
+plt.ylabel('SM/PS distributions')
+plt.title('checks a1-pi channel')
+plt.xlabel('angle (rad)')
+plt.grid()
+plt.legend()
+plt.show()
+
+plt.title('checks a1-pi channel')
+plt.hist(df_sm['aco_angle_5'], alpha = 0.5, bins = 50, label = 'sm aco_angle_5')
+plt.hist(df_ps['aco_angle_5'], alpha = 0.5, bins = 50, label = 'ps aco_angle_5')
+plt.xlabel('aco_angle_5 (rad)')
+plt.ylim(0, 2000)
+plt.grid()
+plt.legend()
+plt.show()
+
+raise end
+
+
+bf.plot_2d(df_ps['pv_angle'], df_ps['pola2_pv_angle'], 'pv_angle', 'pola2_pv_angle')
+plt.show()
 
 
 
@@ -174,6 +196,13 @@ plt.show()
 
 
 
+
+plt.hist(df_sm['aco_angle_5'], alpha = 0.5, bins = 50, label = 'sm aco_angle_5')
+plt.hist(df_ps['aco_angle_5'], alpha = 0.5, bins = 50, label = 'ps aco_angle_5')
+plt.xlabel('pv_angle (rad)')
+plt.ylim(0, 2000)
+plt.grid()
+plt.legend()
 
 
 

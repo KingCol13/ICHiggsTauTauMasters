@@ -46,13 +46,86 @@ from pylorentz import Vector4
 from pylorentz import Position4
 
 # loading the tree
-tree = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_10_0_ippv.root")["ntuple"]
-tree2 = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_0_10_ippv.root")["ntuple"]
+tree = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_10_0_pv.root")["ntuple"]
+tree2 = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_10_0_pvc.root")["ntuple"]
 
 
 #tree = uproot.open("/home/acraplet/Alie/Masters/ICHiggsTauTauMasters/MVAFILE_AllHiggs_tt_reco_10_10_phitt.root")["ntuple"]
 #tree = uproot.open("/eos/user/d/dwinterb/SWAN_projects/Masters_CP/MVAFILE_GluGluHToTauTauUncorrelatedDecay_Filtered_tt_2018.root")["ntuple"]
 print("\n Tree loaded\n")
+
+
+# define what variables are to be read into the dataframe
+momenta_features = [ "pi_E_1", "pi_px_1", "pi_py_1", "pi_pz_1", #leading charged pi 4-momentum
+              "pi_E_2", "pi_px_2", "pi_py_2", "pi_pz_2", #subleading charged pi 4-momentum
+              #"pi0_E_1","pi0_px_1","pi0_py_1","pi0_pz_1", #leading neutral pi 4-momentum
+              #"pi0_E_2","pi0_px_2","pi0_py_2","pi0_pz_2",
+              #"gen_vis_p_1", "gen_vis_p_2",
+              #"gen_vis_E_1", "gen_vis_E_2",
+              #"gen_vis_phi_1", "gen_vis_phi_2",
+              #"gen_vis_eta_1", "gen_vis_eta_2",
+              #subleading neutral pi 4-momentum
+              "gen_nu_p_1", "gen_nu_phi_1", "gen_nu_eta_1", #leading neutrino, gen level
+              "gen_nu_p_2", "gen_nu_phi_2", "gen_nu_eta_2", #subleading neutrino, gen level  
+              #"reco_nu_p_1", "reco_nu_phi_1", "reco_nu_eta_1",
+              #"reco_nu_p_2", "reco_nu_phi_2", "reco_nu_eta_2",
+              
+              
+              #"reco2_nu_p_1", "reco2_nu_phi_1", "reco2_nu_eta_1",
+              #"reco2_nu_p_2", "reco2_nu_phi_2", "reco2_nu_eta_2",
+              
+              
+
+              
+              "pi2_E_1", "pi2_px_1", "pi2_py_1", "pi2_pz_1",
+              "pi3_E_1", "pi3_px_1", "pi3_py_1", "pi3_pz_1",
+              "pi2_E_2", "pi2_px_2", "pi2_py_2", "pi2_pz_2",
+              "pi3_E_2", "pi3_px_2", "pi3_py_2", "pi3_pz_2"
+                ] 
+
+for i in range(9):
+    momenta_features.append("pola"+str(i)+"_nu_p_1")
+    momenta_features.append("pola"+str(i)+"_nu_phi_1")
+    momenta_features.append("pola"+str(i)+"_nu_eta_1")
+    momenta_features.append("pola"+str(i)+"_nu_p_2")
+    momenta_features.append("pola"+str(i)+"_nu_phi_2")
+    momenta_features.append("pola"+str(i)+"_nu_eta_2")
+    momenta_features.append("pola"+str(i)+"_pv_angle")
+
+
+other_features = [ #"ip_x_1", "ip_y_1", "ip_z_1",        #leading impact parameter
+                   "theta_max_level",
+                   #"ip_x_2", "ip_y_2", "ip_z_2",        #subleading impact parameter
+                   #"y_1_1", "y_1_2",
+                   #"ip_sig_1", "ip_sig_2",
+                   "gen_phitt", #"pseudo_phitt",
+                   "pv_angle", "pseudo_pv_angle",
+                   "aco_angle_1", "aco_angle_6",
+                   #"reco_pv_angle", "reco2_pv_angle", 
+                   
+                   
+                   #"reco_phitt", "reco2_phitt", "pola_phitt", "pola2_phitt"
+                   
+                 ]    # ratios of energies
+
+target = [ "met", "metx", "mety", #"aco_angle_1", "aco_angle_6", "aco_angle_5", "aco_angle_7"
+         ]  #acoplanarity angle
+    
+selectors = [ "tau_decay_mode_1","tau_decay_mode_2",
+             "mva_dm_1","mva_dm_2", "rand"
+            ]
+
+additional_info = [ "sv_x_1", "sv_y_1", "sv_z_1",
+                    "sv_x_2", "sv_y_2", "sv_z_2",
+                    "wt_cp_ps", "wt_cp_sm", #"wt_cp_mm"
+                    ]
+met_covariance_matrices = ["metcov00", 
+                           "metcov01", 
+                           "metcov10", 
+                           "metcov11" ]
+
+#covs = sv_covariance_matrices + ip_covariance_matrices + met_covariance_matrices
+
 
 
 
@@ -87,7 +160,7 @@ other_features = [ #"ip_x_1", "ip_y_1", "ip_z_1",        #leading impact paramet
                    #"y_1_1", "y_1_2",
                    #"ip_sig_1", "ip_sig_2",
                    "gen_phitt", #"pseudo_phitt",
-                   "pv_angle", "ippv_angle",
+                   "pv_angle", "pola0_pv_angle",
                    "aco_angle_1", "aco_angle_5",
                    #"reco_pv_angle", "reco2_pv_angle", 
                    
@@ -116,17 +189,18 @@ variables4= momenta_features + other_features + target + selectors + additional_
 print('Check 1')
 df5 = tree2.pandas.df(variables4)
 
-
+variables4= momenta_features + other_features + target + selectors + additional_info #+ met_covariance_matrices 
+print('Check 1')
 df4 = tree.pandas.df(variables4)
 
 
 df4 = df4[
-      #(df4["tau_decay_mode_1"] == tau_mode1) 
+      (df4["tau_decay_mode_1"] == tau_mode1) 
    #& (df4["tau_decay_mode_2"] == tau_mode2) 
-     (df4["mva_dm_1"] == 10) 
-    & (df4["mva_dm_2"] == 0)
+    & (df4["mva_dm_1"] == decay_mode1) 
+    & (df4["mva_dm_2"] == decay_mode3)
     & (df4["aco_angle_5"] > -4000)
-    & (df4["ippv_angle"] > -4000)
+    & (df4["pola0_pv_angle"] > -4000)
     #& (df4["gen_nu_p_2"] > -4000)
     #& (df4["pi_E_1"] != 0)
     #& (df4["pi_E_2"] != 0)
@@ -135,11 +209,11 @@ df4 = df4[
 ]
 
 df5 = df5[
-      #(df5["tau_decay_mode_1"] == tau_mode1) 
+      (df5["tau_decay_mode_1"] == tau_mode1) 
     #& (df5["tau_decay_mode_2"] == tau_mode3) 
-     (df5["mva_dm_1"] == 0) 
-    & (df5["mva_dm_2"] == 10)
-    & (df5["ippv_angle"] > -4000)
+    & (df5["mva_dm_1"] == decay_mode1) 
+    & (df5["mva_dm_2"] == decay_mode3)
+    & (df5["pola0_pv_angle"] > -4000)
     & (df5["aco_angle_5"] > -4000)
     #& (df4["pi_E_1"] != 0)
     #& (df4["pi_E_2"] != 0)
@@ -148,6 +222,21 @@ df5 = df5[
 ]
 
 
+
+#def make_theta(df4, theta):
+    #df0 = df4[
+        #(df4["tau_decay_mode_1"] == tau_mode1) 
+        #& (df4["tau_decay_mode_2"] == tau_mode2) 
+        #& (df4["mva_dm_1"] == decay_mode1) 
+        #& (df4["mva_dm_2"] == decay_mode3)
+        #& (df4["pv_angle"] > -4000)
+        #& (df4["theta_max_level"] == theta)
+        #& (df4["pi_E_1"] != 0)
+        #& (df4["pi_E_2"] != 0)
+        #& (df4["sv_x_1"] != 0)
+        #& (df4["sv_x_2"] != 0)
+    #]
+    #return df0
 
 def make_ps_sm(df4):
     df_ps = df4[
@@ -159,7 +248,13 @@ def make_ps_sm(df4):
     ]
     return df_ps, df_sm
 
+#df0 = make_theta(df4, 0)
+#df1 = make_theta(df4, 1)
+#df2 = make_theta(df4, 2)
 
+#df0_ps, df0_sm = make_ps_sm(df0) 
+#df1_ps, df1_sm = make_ps_sm(df1) 
+#df2_ps, df2_sm = make_ps_sm(df2) 
 df_ps, df_sm = make_ps_sm(df4) 
 df5_ps, df5_sm = make_ps_sm(df5) 
 
@@ -172,25 +267,21 @@ def sm_ps_hist(angle, df_sm, df_ps):
     plt.hist(df_sm[angle], bins = 50, alpha = 0.7, label = name_sm)
     plt.grid()
     
-def sm_ps(angle, marker, df_ps, df_sm, name = 0):
+def sm_ps(angle, marker, df_ps, df_sm):
     bins_array = np.linspace(0, 2*np.pi, 16)
     zeros = np.linspace(0, 0, 16)+1
     hist_sm = np.histogram(df_sm[angle], bins = bins_array)
     hist_ps = np.histogram(df_ps[angle], bins = bins_array)
     if angle == 'aco_angle_5':
-        #name = '1/' + angle
+        name = '1/' + angle
         plt.plot(bins_array[:-1], hist_ps[0]/hist_sm[0], marker, alpha = 0.7, label = name)
     else:
-        if name == 0:
-            name = angle
-        plt.plot(bins_array[:-1], hist_sm[0]/hist_ps[0], marker, alpha = 0.7, label = name)
+        plt.plot(bins_array[:-1], hist_sm[0]/hist_ps[0], marker, alpha = 0.7, label = angle)
     plt.plot(bins_array[:-1], zeros[:-1], 'k-')
 
-plt.title('a1-pi channels ippv method', fontsize = 'xx-large')
-sm_ps('aco_angle_5', 'b--', df5_sm, df5_ps, 'pi-a1 aco_angle_5')
-sm_ps('ippv_angle', 'b-', df5_sm, df5_ps, 'pi-a1 ippv_angle')
-sm_ps('aco_angle_5', 'r--', df_sm, df_ps, 'a1-pi aco_angle_5')
-sm_ps('ippv_angle', 'r-', df_sm, df_ps, 'a1-pi ippv_angle')
+plt.title('a1-pi channel pvc method', fontsize = 'xx-large')
+sm_ps('aco_angle_5', '--', df5_sm, df5_ps)
+sm_ps('pola0_pv_angle', '-', df5_sm, df5_ps)
 plt.xlabel('angle(rad)', fontsize = 'x-large')
 plt.ylabel('ps-sm separation', fontsize = 'x-large')
 plt.grid()
@@ -198,31 +289,17 @@ plt.legend(prop = {'size' : 11})
 plt.show()
 
 
-plt.subplot(2,2,3)
-#plt.title('pi-a1 channel aco_angle_5')
-sm_ps_hist('aco_angle_5', df5_sm, df5_ps)
-plt.ylabel('Occurences pi-a1')
-plt.ylim(0,3500)
-plt.legend(loc=8)
-plt.xlabel('aco_angle_5')
-plt.subplot(2,2,4)
-#plt.title('pi-a1 channel new pv method')
-sm_ps_hist('ippv_angle',df5_sm, df5_ps)
-plt.xlabel('ippv_angle')
-plt.ylim(0,3500)
-plt.legend(loc=8)
-
 plt.subplot(2,2,1)
-plt.title('a1-pi channels aco_angle_5')
-sm_ps_hist('aco_angle_5', df_sm, df_ps)
-plt.ylabel('Occurences a1 - pi')
+plt.title('a1-pi channel aco_angle_5')
+sm_ps_hist('aco_angle_5', df5_sm, df5_ps)
+plt.ylabel('Occurences')
 plt.ylim(0,4000)
 plt.legend(loc=8)
-plt.xlabel('aco_angle_5')
+plt.xlabel('aco_angle_1')
 plt.subplot(2,2,2)
-plt.title('a1-pi channels new ippv method')
-sm_ps_hist('ippv_angle',df_sm, df_ps)
-plt.xlabel('ippv_angle')
+plt.title('a1-pi channel new pv method')
+sm_ps_hist('pola0_pv_angle',df5_sm, df5_ps)
+plt.xlabel('new_angle')
 plt.ylim(0,4000)
 plt.legend(loc=8)
 plt.show()

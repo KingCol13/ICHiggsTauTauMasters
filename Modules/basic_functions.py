@@ -5,8 +5,6 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 
 def norm(vector):
-    if len(vector)!=3:
-        print('This is only for a 3d vector')
     return np.sqrt(vector[0]**2+vector[1]**2+vector[2]**2)
 
 
@@ -21,6 +19,8 @@ def dot_product(vector1,vector2):
 
 def get_vis(df4, decay1, decay2):
     pi_1_4Mom = Momentum4(df4["pi_E_1"],df4["pi_px_1"],df4["pi_py_1"],df4["pi_pz_1"])
+    if decay1 == 0:
+        tau_1_vis = pi_1_4Mom 
     if decay1 == 10:
         pi2_1_4Mom = Momentum4(df4["pi2_E_1"],df4["pi2_px_1"],df4["pi2_py_1"],df4["pi2_pz_1"])
         pi3_1_4Mom = Momentum4(df4["pi3_E_1"],df4["pi3_px_1"],df4["pi3_py_1"],df4["pi3_pz_1"])
@@ -36,7 +36,8 @@ def get_vis(df4, decay1, decay2):
     if decay2 == 1 or decay2 == 2:
         pi0_2_4Mom = Momentum4(df4["pi0_E_2"],df4["pi0_px_2"],df4["pi0_py_2"],df4["pi0_pz_2"])
         tau_2_vis = pi_2_4Mom + pi0_2_4Mom
-    
+    if decay2 == 0:
+        tau_2_vis = pi_2_4Mom 
     return tau_1_vis, tau_2_vis
 
 def get_gen_vis(df, decay1, decay2):
