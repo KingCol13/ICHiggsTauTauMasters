@@ -25,9 +25,9 @@ import tensorflow as tf
 
 #don't  forget to change name of the file at the end
 tau_mode1 = 10
-tau_mode2 = 10
+tau_mode2 = 0
 decay_mode1 = 10
-decay_mode2 = 10
+decay_mode2 = 0
 
 
 # stop tensorflow trying to overfill GPU memory
@@ -48,7 +48,7 @@ from pylorentz import Vector4
 from pylorentz import Position4
 
 # loading the tree
-tree = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_10_10.root")["ntuple"]
+tree = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_10_0.root")["ntuple"]
 #tree = uproot.open("/eos/user/d/dwinterb/SWAN_projects/Masters_CP/MVAFILE_GluGluHToTauTauUncorrelatedDecay_Filtered_tt_2018.root")["ntuple"]
 print("\n Tree loaded\n")
 
@@ -122,12 +122,12 @@ df4 = tree.pandas.df(variables4)
 
 df4 = df4[
       (df4["tau_decay_mode_1"] == tau_mode1) 
-    & (df4["tau_decay_mode_2"] == tau_mode2) 
+    #& (df4["tau_decay_mode_2"] == tau_mode2) 
     & (df4["mva_dm_1"] == decay_mode1) 
     & (df4["mva_dm_2"] == decay_mode2)
-    #& (df4["gen_nu_p_1"] > -4000)
-    #& (df4["gen_nu_p_2"] > -4000)
-    #& (df4["sv_x_1"] != 0)
+    & (df4["gen_nu_p_1"] > -4000)
+    & (df4["gen_nu_p_2"] > -4000)
+    & (df4["sv_x_1"] != 0)
     #& (df4["sv_x_2"] != 0)
     
 ]
@@ -150,94 +150,27 @@ print("panda Data frame created \n")
 
 df4.head()
 
-
-_, _, _, _, nu1_guessOld, nu2_guessOld, checks = polari.polarimetric_full(df_eval, decay_mode1, decay_mode2, 'sv', 'HiggsM', True)
-df_eval['pola0_nu_p_1'] = nu1_guessOld.p
-df_eval['pola0_nu_p_2'] = nu2_guessOld.p
-df_eval['pola0_nu_phi_1'] = nu1_guessOld.phi
-df_eval['pola0_nu_phi_2'] = nu2_guessOld.phi
-df_eval['pola0_nu_eta_1'] = nu1_guessOld.eta
-df_eval['pola0_nu_eta_2'] = nu2_guessOld.eta
-df_eval['pola0_nu_eta_2'] = nu2_guessOld.eta
-df_eval['theta_max_level'] = checks
-
-
-_, _, _, _, nu1_guessOld, nu2_guessOld = polari.polarimetric_full(df_eval, decay_mode1, decay_mode2, 'naive', 'HiggsM')
-df_eval['pola1_nu_p_1'] = nu1_guessOld.p
-df_eval['pola1_nu_p_2'] = nu2_guessOld.p
-df_eval['pola1_nu_phi_1'] = nu1_guessOld.phi
-df_eval['pola1_nu_phi_2'] = nu2_guessOld.phi
-df_eval['pola1_nu_eta_1'] = nu1_guessOld.eta
-df_eval['pola1_nu_eta_2'] = nu2_guessOld.eta
-
-
-_, _, _, _, nu1_guessOld, nu2_guessOld = polari.polarimetric_full(df_eval, decay_mode1, decay_mode2, 'geo', 'HiggsM')
+_, _, _, _, nu1_guessOld, nu2_guessOld, checks = polari.polarimetric_full(df_eval, decay_mode1, decay_mode2, 'geo', 'HiggsM', True)
 df_eval['pola2_nu_p_1'] = nu1_guessOld.p
-df_eval['pola2_nu_p_2'] = nu2_guessOld.p
+#df_eval['pola2_nu_p_2'] = nu2_guessOld.p
 df_eval['pola2_nu_phi_1'] = nu1_guessOld.phi
-df_eval['pola2_nu_phi_2'] = nu2_guessOld.phi
+#df_eval['pola2_nu_phi_2'] = nu2_guessOld.phi
 df_eval['pola2_nu_eta_1'] = nu1_guessOld.eta
-df_eval['pola2_nu_eta_2'] = nu2_guessOld.eta
-
-
-_, _, _, _, nu1_guessOld, nu2_guessOld = polari.polarimetric_full(df_eval, decay_mode1, decay_mode2, 'sv', 'HiggsM_met')
-df_eval['pola3_nu_p_1'] = nu1_guessOld.p
-df_eval['pola3_nu_p_2'] = nu2_guessOld.p
-df_eval['pola3_nu_phi_1'] = nu1_guessOld.phi
-df_eval['pola3_nu_phi_2'] = nu2_guessOld.phi
-df_eval['pola3_nu_eta_1'] = nu1_guessOld.eta
-df_eval['pola3_nu_eta_2'] = nu2_guessOld.eta
-
-
-_, _, _, _, nu1_guessOld, nu2_guessOld = polari.polarimetric_full(df_eval, decay_mode1, decay_mode2, 'naive', 'HiggsM_met')
-df_eval['pola4_nu_p_1'] = nu1_guessOld.p
-df_eval['pola4_nu_p_2'] = nu2_guessOld.p
-df_eval['pola4_nu_phi_1'] = nu1_guessOld.phi
-df_eval['pola4_nu_phi_2'] = nu2_guessOld.phi
-df_eval['pola4_nu_eta_1'] = nu1_guessOld.eta
-df_eval['pola4_nu_eta_2'] = nu2_guessOld.eta
-
-
-_, _, _, _, nu1_guessOld, nu2_guessOld = polari.polarimetric_full(df_eval, decay_mode1, decay_mode2, 'geo', 'HiggsM_met')
-df_eval['pola5_nu_p_1'] = nu1_guessOld.p
-df_eval['pola5_nu_p_2'] = nu2_guessOld.p
-df_eval['pola5_nu_phi_1'] = nu1_guessOld.phi
-df_eval['pola5_nu_phi_2'] = nu2_guessOld.phi
-df_eval['pola5_nu_eta_1'] = nu1_guessOld.eta
-df_eval['pola5_nu_eta_2'] = nu2_guessOld.eta
-
-
-
-_, _, _, _, nu1_guessOld, nu2_guessOld = polari.polarimetric_full(df_eval, decay_mode1, decay_mode2, 'sv', 'tau_p')
-df_eval['pola6_nu_p_1'] = nu1_guessOld.p
-df_eval['pola6_nu_p_2'] = nu2_guessOld.p
-df_eval['pola6_nu_phi_1'] = nu1_guessOld.phi
-df_eval['pola6_nu_phi_2'] = nu2_guessOld.phi
-df_eval['pola6_nu_eta_1'] = nu1_guessOld.eta
-df_eval['pola6_nu_eta_2'] = nu2_guessOld.eta
-
-
-_, _, _, _, nu1_guessOld, nu2_guessOld = polari.polarimetric_full(df_eval, decay_mode1, decay_mode2, 'naive', 'tau_p')
-df_eval['pola7_nu_p_1'] = nu1_guessOld.p
-df_eval['pola7_nu_p_2'] = nu2_guessOld.p
-df_eval['pola7_nu_phi_1'] = nu1_guessOld.phi
-df_eval['pola7_nu_phi_2'] = nu2_guessOld.phi
-df_eval['pola7_nu_eta_1'] = nu1_guessOld.eta
-df_eval['pola7_nu_eta_2'] = nu2_guessOld.eta
-
+#df_eval['pola2_nu_eta_2'] = nu2_guessOld.eta
+df_eval['pola_nb_shift'] = checks
 
 _, _, _, _, nu1_guessOld, nu2_guessOld = polari.polarimetric_full(df_eval, decay_mode1, decay_mode2, 'geo', 'tau_p')
 df_eval['pola8_nu_p_1'] = nu1_guessOld.p
-df_eval['pola8_nu_p_2'] = nu2_guessOld.p
+#df_eval['pola8_nu_p_2'] = nu2_guessOld.p
 df_eval['pola8_nu_phi_1'] = nu1_guessOld.phi
-df_eval['pola8_nu_phi_2'] = nu2_guessOld.phi
+#df_eval['pola8_nu_phi_2'] = nu2_guessOld.phi
 df_eval['pola8_nu_eta_1'] = nu1_guessOld.eta
-df_eval['pola8_nu_eta_2'] = nu2_guessOld.eta
+#df_eval['pola8_nu_eta_2'] = nu2_guessOld.eta
 
 treeBranches = {column : str(df_eval[column].dtypes) for column in df_eval}
 branchDict = {column : np.array(df_eval[column]) for column in df_eval}
 tree = uproot.newtree(treeBranches, title="ntuple", compression=uproot.ZLIB(3))
 
-with uproot.recreate("MVAFILE_full_10_10_pola12.root") as f:
+with uproot.recreate("MVAFILE_full_10_0_pola2.root") as f:
     f["ntuple"] = tree
     f["ntuple"].extend(branchDict)

@@ -26,7 +26,7 @@ def closest_tau(a1_dir_hat, sv_dir_hat, theta_GJ):
     a1_y = a1_dir_hat[1]
     
     #create a normalised vector prependicular to a1
-    n_1_x = 1/np.sqrt(1+(a1_x/a1_y)**2)
+    n_1_x = 1/np.clip(np.sqrt(1+(a1_x/a1_y)**2), 10**-9, 10**10)
     n_1_y = -a1_x * n_1_x / a1_y
     n_1 = np.array([n_1_x, n_1_y, np.zeros(len(n_1_y))])
     
@@ -368,8 +368,8 @@ def a1_pi_polarimetric(df, decay_mode1, decay_mode2, direction, selector, theta 
         gen_metx = nu_1_gen.p_x + nu_2.p_x
         gen_mety = nu_1_gen.p_y + nu_2.p_y
         
-        nu_2_px = gen_metx - nu_1.p_x  #nu_2.p_x #df['metx']
-        nu_2_py = gen_mety - nu_1.p_y  #nu_2.p_y #df['mety']
+        nu_2_px = df["metx"] - nu_1.p_x  #nu_2.p_x #df['metx']
+        nu_2_py = df["mety"] - nu_1.p_y  #nu_2.p_y #df['mety']
         
         m_vis_2 = tau_2_vis.m
         #Now two solutions for nu_z

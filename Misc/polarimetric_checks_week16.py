@@ -46,8 +46,8 @@ from pylorentz import Vector4
 from pylorentz import Position4
 
 # loading the tree
-tree = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_10_0_ippv.root")["ntuple"]
-tree2 = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_0_10_ippv.root")["ntuple"]
+tree = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_10_0_pola2_ippv.root")["ntuple"]
+#tree2 = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_10_0_ippv.root")["ntuple"]
 
 
 #tree = uproot.open("/home/acraplet/Alie/Masters/ICHiggsTauTauMasters/MVAFILE_AllHiggs_tt_reco_10_10_phitt.root")["ntuple"]
@@ -87,7 +87,10 @@ other_features = [ #"ip_x_1", "ip_y_1", "ip_z_1",        #leading impact paramet
                    #"y_1_1", "y_1_2",
                    #"ip_sig_1", "ip_sig_2",
                    "gen_phitt", #"pseudo_phitt",
+                   'pola_nb_shit',
                    "pv_angle", "ippv_angle",
+                   "ippv2_angle", "ippv8_angle",
+                   "pseudo_ippv_angle", "pseudo2_ippv_angle",
                    "aco_angle_1", "aco_angle_5",
                    #"reco_pv_angle", "reco2_pv_angle", 
                    
@@ -114,7 +117,7 @@ met_covariance_matrices = ["metcov00",
 
 variables4= momenta_features + other_features + target + selectors + additional_info #+ met_covariance_matrices 
 print('Check 1')
-df5 = tree2.pandas.df(variables4)
+#df5 = tree2.pandas.df(variables4)
 
 
 df4 = tree.pandas.df(variables4)
@@ -127,6 +130,7 @@ df4 = df4[
     & (df4["mva_dm_2"] == 0)
     & (df4["aco_angle_5"] > -4000)
     & (df4["ippv_angle"] > -4000)
+    #& (df4["pola_nb_shit"] == 1)
     #& (df4["gen_nu_p_2"] > -4000)
     #& (df4["pi_E_1"] != 0)
     #& (df4["pi_E_2"] != 0)
@@ -134,18 +138,19 @@ df4 = df4[
     #& (df4["sv_x_2"] != 0)
 ]
 
-df5 = df5[
+#df5 = df5[
       #(df5["tau_decay_mode_1"] == tau_mode1) 
     #& (df5["tau_decay_mode_2"] == tau_mode3) 
-     (df5["mva_dm_1"] == 0) 
-    & (df5["mva_dm_2"] == 10)
-    & (df5["ippv_angle"] > -4000)
-    & (df5["aco_angle_5"] > -4000)
+     #(df5["mva_dm_1"] == 0) 
+    #& (df5["mva_dm_2"] == 10)
+    #& (df5["ippv_angle"] > -4000)
+    #& (df5["pseudo_ippv_angle"] > -4000)
+    #& (df5["aco_angle_5"] > -4000)
     #& (df4["pi_E_1"] != 0)
     #& (df4["pi_E_2"] != 0)
     #& (df4["sv_x_1"] != 0)
     #& (df4["sv_x_2"] != 0)
-]
+#]
 
 
 
@@ -161,7 +166,7 @@ def make_ps_sm(df4):
 
 
 df_ps, df_sm = make_ps_sm(df4) 
-df5_ps, df5_sm = make_ps_sm(df5) 
+#df5_ps, df5_sm = make_ps_sm(df5) 
 
 
 
@@ -187,10 +192,14 @@ def sm_ps(angle, marker, df_ps, df_sm, name = 0):
     plt.plot(bins_array[:-1], zeros[:-1], 'k-')
 
 plt.title('a1-pi channels ippv method', fontsize = 'xx-large')
-sm_ps('aco_angle_5', 'b--', df5_sm, df5_ps, 'pi-a1 aco_angle_5')
-sm_ps('ippv_angle', 'b-', df5_sm, df5_ps, 'pi-a1 ippv_angle')
-sm_ps('aco_angle_5', 'r--', df_sm, df_ps, 'a1-pi aco_angle_5')
-sm_ps('ippv_angle', 'r-', df_sm, df_ps, 'a1-pi ippv_angle')
+sm_ps('aco_angle_5', '--', df_sm, df_ps, 'pi-a1 aco_angle_5')
+sm_ps('ippv_angle', '-', df_sm, df_ps, 'pi-a1 ippv_angle')
+sm_ps('pseudo_ippv_angle', 'g-', df_sm, df_ps, 'pi-a1 pseudo_ippv_angle')
+sm_ps('pseudo2_ippv_angle', 'm-', df_sm, df_ps, 'pi-a1 pseudo_ippv_angle')
+#sm_ps('ippv2_angle', 'g-', df_sm, df_ps, 'pi-a1 ippv2_angle')
+#sm_ps('ippv8_angle', 'r-.', df_sm, df_ps, 'pi-a1 ippv8_angle')
+#sm_ps('aco_angle_5', 'r--', df_sm, df_ps, 'a1-pi aco_angle_5')
+#sm_ps('ippv_angle', 'r-', df_sm, df_ps, 'a1-pi ippv_angle')
 plt.xlabel('angle(rad)', fontsize = 'x-large')
 plt.ylabel('ps-sm separation', fontsize = 'x-large')
 plt.grid()
@@ -198,19 +207,26 @@ plt.legend(prop = {'size' : 11})
 plt.show()
 
 
-plt.subplot(2,2,3)
+#plt.subplot(2,2,3)
 #plt.title('pi-a1 channel aco_angle_5')
-sm_ps_hist('aco_angle_5', df5_sm, df5_ps)
-plt.ylabel('Occurences pi-a1')
+#sm_ps_hist('aco_angle_5', df5_sm, df5_ps)
+#plt.ylabel('Occurences pi-a1')
+#plt.ylim(0,3500)
+#plt.legend(loc=8)
+#plt.xlabel('aco_angle_5')
+plt.subplot(2,2,3)
+#plt.title('pi-a1 channel new pv method')
+sm_ps_hist('ippv2_angle',df_sm, df_ps)
+plt.xlabel('ippv2_angle')
 plt.ylim(0,3500)
 plt.legend(loc=8)
-plt.xlabel('aco_angle_5')
 plt.subplot(2,2,4)
 #plt.title('pi-a1 channel new pv method')
-sm_ps_hist('ippv_angle',df5_sm, df5_ps)
-plt.xlabel('ippv_angle')
+sm_ps_hist('ippv8_angle',df_sm, df_ps)
+plt.xlabel('ippv8_angle')
 plt.ylim(0,3500)
 plt.legend(loc=8)
+
 
 plt.subplot(2,2,1)
 plt.title('a1-pi channels aco_angle_5')
@@ -226,10 +242,6 @@ plt.xlabel('ippv_angle')
 plt.ylim(0,4000)
 plt.legend(loc=8)
 plt.show()
-
-
-
-
 
 
 raise end
