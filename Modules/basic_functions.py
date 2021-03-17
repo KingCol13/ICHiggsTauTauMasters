@@ -96,3 +96,69 @@ def plot_1d(qqty1, qqty2, label1, label2, xlim = (-100, 100), nb_bins = 1000):
     #plt.grid()
     #plt.show()
     return 0
+    
+    
+def plot_sm_ps(angle, marker, df, nbins, name = 0):
+    df_ps, df_sm = make_ps_sm(df)
+    bins_array = np.linspace(0, 2*np.pi , nbins+1)
+    zeros = np.linspace(0, 0, nbins+1)+1
+
+ #   a = df[angle]
+ #   list_bins = [0]
+ #   for i in range (nbins):
+ #       list_bins.append(np.quantile(a, (i+1)*1/nbins))
+ #   bins_array = np.array(list_bins)
+
+    hist_sm = np.histogram(df_sm[angle], bins = bins_array)
+    hist_ps = np.histogram(df_ps[angle], bins = bins_array)
+    if angle == 'aco_angle_1' or angle == 'aco_angle_5':
+        #name = '1/' + angle
+        plt.plot(bins_array[:-1], hist_ps[0]/hist_sm[0], marker, alpha = 0.7, label = name)
+    else:
+        if name == 0:
+            name = angle
+        plt.plot(bins_array[:-1], hist_sm[0]/hist_ps[0], marker, alpha = 0.7, label = name)
+    plt.plot(bins_array[:-1], zeros[:-1], 'k-')
+    
+def make_ps_sm(df4):
+    df_ps = df4[
+        (df4["rand"]<df4["wt_cp_ps"]/2)     #a data frame only including the pseudoscalars
+    ]
+
+    df_sm = df4[
+        (df4["rand"]<df4["wt_cp_sm"]/2)     #data frame only including the scalars
+    ]
+    return df_ps, df_sm
+    
+
+   
+def improvement(df, variable_new, variable_old, nbins = 4):
+    df_ps, df_sm = make_ps_sm(df)
+    bins_array = np.linspace(0, 2*np.pi, nbins+1)
+    #print(bins_array)
+    #a = df[variable_old]
+    #list_bins = []
+#    for i in range (nbins):
+#        list_bins.append(np.quantile(a, (i+1)*1/nbins))
+#        print((i+1)*1/nbins)
+#    bins_array = np.array(list_bins)
+    
+    #print(bins_array)
+    
+    hist_sm_new= np.histogram(df_sm[variable_new], bins = bins_array)
+    hist_ps_new = np.histogram(df_ps[variable_new], bins = bins_array)
+    
+    hist_sm_old= np.histogram(df_sm[variable_old], bins = bins_array)
+    hist_ps_old = np.histogram(df_ps[variable_old], bins = bins_array)
+    
+    sep_new = np.array(hist_sm_new[0]/hist_ps_new[0])
+    sep_old = np.array(hist_sm_old[0]/hist_ps_old[0])
+    
+    if variable_old == 'aco_angle_1':
+        sep_old = np.array(hist_ps_old[0]/hist_sm_old[0])
+    print(min(sep_old), min(sep_new), sep_old.mean())
+    
+     #
+    return -(min(sep_old)-min(sep_new))/(min(sep_old)-1)#(1-min(sep_new))/(1-min(sep_old))
+        
+

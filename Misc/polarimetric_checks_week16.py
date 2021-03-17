@@ -46,9 +46,12 @@ from pylorentz import Vector4
 from pylorentz import Position4
 
 # loading the tree
-tree = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_10_0_pola2_ippv.root")["ntuple"]
-#tree2 = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_10_0_ippv.root")["ntuple"]
+#tree = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_10_0_pola2_ippv.root")["ntuple"]
+#tree2 = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_0_10_ippv.root")["ntuple"]
 
+
+tree3 = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_10_10_pola12_pv.root")["ntuple"]
+#tree3 = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_10_X.root")["ntuple"]
 
 #tree = uproot.open("/home/acraplet/Alie/Masters/ICHiggsTauTauMasters/MVAFILE_AllHiggs_tt_reco_10_10_phitt.root")["ntuple"]
 #tree = uproot.open("/eos/user/d/dwinterb/SWAN_projects/Masters_CP/MVAFILE_GluGluHToTauTauUncorrelatedDecay_Filtered_tt_2018.root")["ntuple"]
@@ -85,12 +88,13 @@ momenta_features = [ "pi_E_1", "pi_px_1", "pi_py_1", "pi_pz_1", #leading charged
 other_features = [ #"ip_x_1", "ip_y_1", "ip_z_1",        #leading impact parameter
                    #"ip_x_2", "ip_y_2", "ip_z_2",        #subleading impact parameter
                    #"y_1_1", "y_1_2",
-                   #"ip_sig_1", "ip_sig_2",
+                   "ip_sig_1", "ip_sig_2",
                    "gen_phitt", #"pseudo_phitt",
-                   'pola_nb_shit',
-                   "pv_angle", "ippv_angle",
-                   "ippv2_angle", "ippv8_angle",
-                   "pseudo_ippv_angle", "pseudo2_ippv_angle",
+                   #'pola_nb_shit',
+                   'pola5_pv_angle',
+                   "pv_angle", #"ippv_angle",
+                   #"ippv2_angle", "ippv8_angle",
+                   #"pseudo_ippv_angle", "pseudo2_ippv_angle",
                    "aco_angle_1", "aco_angle_5",
                    #"reco_pv_angle", "reco2_pv_angle", 
                    
@@ -120,17 +124,139 @@ print('Check 1')
 #df5 = tree2.pandas.df(variables4)
 
 
-df4 = tree.pandas.df(variables4)
+#df4 = tree.pandas.df(variables4)
+#df40 = tree2.pandas.df(variables4)
+df3 = tree3.pandas.df(variables4)
+
+df3 = df3[
+     (df3["pv_angle"] > -4000)
+     & (df3["aco_angle_1"] > -4000)
+     &(df3["tau_decay_mode_2"] == 10) 
+     &(df3["mva_dm_2"] == 10) 
+     &(df3["tau_decay_mode_1"] == 10) 
+     &(df3["mva_dm_1"] == 10) 
+     &(df3["gen_nu_p_1"] > -4000)
+     &(df3["gen_nu_p_2"] > -4000)
+    #& (df4["mva_dm_2"] == decay_mode2)
+     &(df3['sv_x_1'] != 0)
+     &(df3['sv_x_2'] != 0)
+    ]
+
+#trainFrac = 0.7
+#df_train, df3 = np.split(df3, [int(trainFrac*len(df3))], axis=0)
+
+def make_ps_sm(df4):
+    df_ps = df4[
+        (df4["rand"]<df4["wt_cp_ps"]/2)     #a data frame only including the pseudoscalars
+    ]
+
+    df_sm = df4[
+        (df4["rand"]<df4["wt_cp_sm"]/2)     #data frame only including the scalars
+    ]
+    return df_ps, df_sm
+
+   
+def improvement(df, variable_new, variable_old, nbins = 4):
+    df_ps, df_sm = make_ps_sm(df)
+    #bins_array = np.linspace(0, 2*np.pi, nbins+1)
+    #print(bins_array)
+    a = df[variable_old]
+    list_bins = []
+    for i in range (nbins):
+        list_bins.append(np.quantile(a, (i+1)*1/nbins))
+        print((i+1)*1/nbins)
+    bins_array = np.array(list_bins)
+    
+    #print(bins_array)
+    
+    hist_sm_new= np.histogram(df_sm[variable_new], bins = bins_array)
+    hist_ps_new = np.histogram(df_ps[variable_new], bins = bins_array)
+    
+    hist_sm_old= np.histogram(df_sm[variable_old], bins = bins_array)
+    hist_ps_old = np.histogram(df_ps[variable_old], bins = bins_array)
+    
+    sep_new = np.array(hist_sm_new[0]/hist_ps_new[0])
+    sep_old = np.array(hist_sm_old[0]/hist_ps_old[0])
+    
+    if variable_old == 'aco_angle_1':
+        sep_old = np.array(hist_ps_old[0]/hist_sm_old[0])
+    print(min(sep_old), min(sep_new), sep_old.mean())
+    
+     #
+    return -(min(sep_old)-min(sep_new))/(min(sep_old)-1)#(1-min(sep_new))/(1-min(sep_old))
+        
+
+nbins = 4
+
+print('a1-a1 channel improvement bins = 4', improvement(df3, 'pv_angle', 'aco_angle_1', nbins))
+#print('a1-a1 channel improvement bins = 4', improvement(df3, 'pola5_pv_angle', 'pv_angle', nbins))
 
 
-df4 = df4[
+def sm_ps(angle, marker, df, nbins, name = 0):
+    df_ps, df_sm = make_ps_sm(df)
+    bins_array = np.linspace(0, 2*np.pi , nbins+1)
+    zeros = np.linspace(0, 0, nbins+1)+1
+
+    a = df[angle]
+    list_bins = [0]
+    for i in range (nbins):
+        list_bins.append(np.quantile(a, (i+1)*1/nbins))
+    bins_array = np.array(list_bins)
+
+    hist_sm = np.histogram(df_sm[angle], bins = bins_array)
+    hist_ps = np.histogram(df_ps[angle], bins = bins_array)
+    if angle == 'aco_angle_1' or angle == 'aco_angle_5':
+        #name = '1/' + angle
+        plt.plot(bins_array[:-1], hist_ps[0]/hist_sm[0], marker, alpha = 0.7, label = name)
+    else:
+        if name == 0:
+            name = angle
+        plt.plot(bins_array[:-1], hist_sm[0]/hist_ps[0], marker, alpha = 0.7, label = name)
+    plt.plot(bins_array[:-1], zeros[:-1], 'k-')
+
+#sm_ps('pv_angle', 'b--', df3, nbins, 'pv_angle with 4 bins')
+#sm_ps('aco_angle_1', 'r--', df3, nbins, 'aco_angle_1 with 4 bins')
+
+nbins = 4
+plt.title('a1-a1 channel CP-sensitivity improvements')
+sm_ps('aco_angle_1', 'r-', df3, nbins, 'aco_angle_1 with '+str(nbins)+' bins')
+plt.xlabel ('angle (rad)')
+sm_ps('pv_angle', 'b-', df3, nbins, 'pv_angle with '+str(nbins)+' bins\n improvement from aco_angle1: '+str(improvement(df3, 'pv_angle', 'aco_angle_1', nbins))[:5])
+
+sm_ps('pola5_pv_angle', 'g-', df3, nbins, 'pola5_pv_angle with '+str(nbins)+' bins\n improvement from aco_angle_1: '+str(improvement(df3, 'pola5_pv_angle', 'aco_angle_1', nbins))[:5])
+
+plt.ylabel('ps/sm distributions')
+plt.grid()
+plt.legend()
+plt.show()
+
+
+raise END
+
+df4 = df4[(df4["mva_dm_1"] == 10) 
+    & (df4["mva_dm_2"] == 0)
+    & (df4["aco_angle_5"] > -4000)
+    & (df4["ippv_angle"] > -4000)
+    ]
+
+df40 = df40[(df40["mva_dm_1"] == 0) 
+    & (df40["mva_dm_2"] == 10)
+    & (df40["aco_angle_5"] > -4000)
+    & (df40["ippv_angle"] > -4000)
+    ]
+
+
+
+
+df6 = df4[
       #(df4["tau_decay_mode_1"] == tau_mode1) 
    #& (df4["tau_decay_mode_2"] == tau_mode2) 
      (df4["mva_dm_1"] == 10) 
     & (df4["mva_dm_2"] == 0)
     & (df4["aco_angle_5"] > -4000)
     & (df4["ippv_angle"] > -4000)
-    #& (df4["pola_nb_shit"] == 1)
+    & (df4["ip_sig_2"] > 1.5)
+    #& (df4["pola_nb_shit"] == 0)
     #& (df4["gen_nu_p_2"] > -4000)
     #& (df4["pi_E_1"] != 0)
     #& (df4["pi_E_2"] != 0)
@@ -138,19 +264,53 @@ df4 = df4[
     #& (df4["sv_x_2"] != 0)
 ]
 
-#df5 = df5[
-      #(df5["tau_decay_mode_1"] == tau_mode1) 
-    #& (df5["tau_decay_mode_2"] == tau_mode3) 
-     #(df5["mva_dm_1"] == 0) 
-    #& (df5["mva_dm_2"] == 10)
-    #& (df5["ippv_angle"] > -4000)
-    #& (df5["pseudo_ippv_angle"] > -4000)
-    #& (df5["aco_angle_5"] > -4000)
+df7 = df4[
+      #(df4["tau_decay_mode_1"] == tau_mode1) 
+   #& (df4["tau_decay_mode_2"] == tau_mode2) 
+     (df4["mva_dm_1"] == 10) 
+    & (df4["mva_dm_2"] == 0)
+    & (df4["aco_angle_5"] > -4000)
+    & (df4["ippv_angle"] > -4000)
+    & (df4["ip_sig_2"] < 1.5)
+    #& (df4["pola_nb_shit"] == 0)
+    #& (df4["gen_nu_p_2"] > -4000)
     #& (df4["pi_E_1"] != 0)
     #& (df4["pi_E_2"] != 0)
     #& (df4["sv_x_1"] != 0)
     #& (df4["sv_x_2"] != 0)
-#]
+]
+df60 = df40[
+      #(df4["tau_decay_mode_1"] == tau_mode1) 
+   #& (df4["tau_decay_mode_2"] == tau_mode2) 
+     (df40["mva_dm_1"] == 0) 
+    & (df40["mva_dm_2"] == 10)
+    & (df40["aco_angle_5"] > -4000)
+    & (df40["ippv_angle"] > -4000)
+    & (df40["ip_sig_1"] > 1.5)
+    #& (df4["pola_nb_shit"] == 0)
+    #& (df4["gen_nu_p_2"] > -4000)
+    #& (df4["pi_E_1"] != 0)
+    #& (df4["pi_E_2"] != 0)
+    #& (df4["sv_x_1"] != 0)
+    #& (df4["sv_x_2"] != 0)
+]
+
+df70 = df40[
+      #(df4["tau_decay_mode_1"] == tau_mode1) 
+   #& (df4["tau_decay_mode_2"] == tau_mode2) 
+     (df40["mva_dm_1"] == 0) 
+    & (df40["mva_dm_2"] == 10)
+    & (df40["aco_angle_5"] > -4000)
+    & (df40["ippv_angle"] > -4000)
+    & (df40["ip_sig_1"] < 1.5)
+    #& (df4["pola_nb_shit"] == 0)
+    #& (df4["gen_nu_p_2"] > -4000)
+    #& (df4["pi_E_1"] != 0)
+    #& (df4["pi_E_2"] != 0)
+    #& (df4["sv_x_1"] != 0)
+    #& (df4["sv_x_2"] != 0)
+]
+
 
 
 
@@ -166,7 +326,15 @@ def make_ps_sm(df4):
 
 
 df_ps, df_sm = make_ps_sm(df4) 
-#df5_ps, df5_sm = make_ps_sm(df5) 
+
+df6_ps, df6_sm = make_ps_sm(df6) 
+df7_ps, df7_sm = make_ps_sm(df7) 
+
+df0_ps, df0_sm = make_ps_sm(df40) 
+
+df60_ps, df60_sm = make_ps_sm(df60) 
+df70_ps, df70_sm = make_ps_sm(df70) 
+
 
 
 
@@ -190,12 +358,50 @@ def sm_ps(angle, marker, df_ps, df_sm, name = 0):
             name = angle
         plt.plot(bins_array[:-1], hist_sm[0]/hist_ps[0], marker, alpha = 0.7, label = name)
     plt.plot(bins_array[:-1], zeros[:-1], 'k-')
+    
+    
+def improvement(df_ps, df_sm, variable_new, variable_old, nbins = 4):
+    bins_array = np.linspace(0, 2*np.pi, nbins)
+    hist_sm_new= np.histogram(df_sm[variable_new], bins = bins_array)
+    hist_ps_new = np.histogram(df_ps[variable_new], bins = bins_array)
+    
+    hist_sm_old= np.histogram(df_sm[variable_old], bins = bins_array)
+    hist_ps_old = np.histogram(df_ps[variable_old], bins = bins_array)
+    
+    sep_new = np.array(hist_sm_new[0]/hist_ps_new[0])
+    sep_old = np.array(hist_sm_old[0]/hist_ps_old[0])
+    
+    if variable_old == 'aco_angle_5':
+        sep_old = np.array(hist_ps_old[0]/hist_sm_old[0])
+    print(min(sep_old), min(sep_new))
+    return -(min(sep_old)-min(sep_new))/(min(sep_old)-1)
+        
 
-plt.title('a1-pi channels ippv method', fontsize = 'xx-large')
-sm_ps('aco_angle_5', '--', df_sm, df_ps, 'pi-a1 aco_angle_5')
-sm_ps('ippv_angle', '-', df_sm, df_ps, 'pi-a1 ippv_angle')
-sm_ps('pseudo_ippv_angle', 'g-', df_sm, df_ps, 'pi-a1 pseudo_ippv_angle')
-sm_ps('pseudo2_ippv_angle', 'm-', df_sm, df_ps, 'pi-a1 pseudo_ippv_angle')
+print(len(df6['ippv_angle'])/len(df4['ippv_angle']))
+print('a1-pi channel improvement bins = 15', improvement(df6_ps, df6_sm, 'ippv_angle', 'aco_angle_5', 15))
+print('pi-a1 channel improvement bins = 15',improvement(df60_ps, df60_sm, 'ippv_angle', 'aco_angle_5', 15))
+
+
+plt.title('a1-pi channel ippv method', fontsize = 'xx-large')
+#sm_ps('aco_angle_5', 'm-.', df7_sm, df7_ps, 'a1-pi aco_angle_5 IP < 1.5')
+sm_ps('aco_angle_5', 'm--', df_sm, df_ps, 'a1-pi aco_angle_5 no IP cut')
+sm_ps('aco_angle_5', 'm-', df6_sm, df6_ps, 'a1-pi aco_angle_5 IP > 1.5')
+
+#sm_ps('ippv_angle', 'r-.', df7_sm, df7_ps, 'a1-pi ippv_angle IP < 1.5')
+sm_ps('ippv_angle', 'r--', df_sm, df_ps, 'a1-pi ippv_angle no IP_sig cut')
+sm_ps('ippv_angle', 'r-', df6_sm, df6_ps, 'a1-pi ippv_angle no IP_sig > 1.5')
+#sm_ps('aco_angle_5', 'b-.', df70_sm, df70_ps, 'pi-a1 aco_angle_5 IP < 1.5')
+sm_ps('aco_angle_5', 'b--', df0_sm, df0_ps, 'pi-a1 aco_angle_5 no IP cut')
+sm_ps('aco_angle_5', 'b-', df60_sm, df60_ps, 'pi-a1 aco_angle_5 IP > 1.5')
+#sm_ps('ippv_angle', 'c-.', df70_sm, df70_ps, 'pi-a1 ippv_angle no IP_sig < 1.5')
+sm_ps('ippv_angle', 'c--', df0_sm, df0_ps, 'pi-a1 ippv_angle no IP_sig cut')
+sm_ps('ippv_angle', 'c-', df60_sm, df60_ps, 'pi-a1 ippv_angle no IP_sig > 1.5')
+#sm_ps('ippv_angle', 'b-.', df7_sm, df7_ps, 'pi-a1 ippv_angle no IP_sig < 1.5')
+#sm_ps('ippv2_angle', '-', df_sm, df_ps, 'pi-a1 ippv2_angle - 1 shift')
+#sm_ps('ippv2_angle', '-', df5_sm, df5_ps, 'pi-a1 ippv2_angle - 0 shifts')
+#sm_ps('ippv_angle', '--', df_sm, df_ps, 'pi-a1 ippv_angle - 1 shift')
+#sm_ps('pseudo_ippv_angle', 'g-', df_sm, df_ps, 'pi-a1 pseudo_ippv_angle')
+#sm_ps('pseudo2_ippv_angle', 'm-', df_sm, df_ps, 'pi-a1 pseudo_ippv_angle')
 #sm_ps('ippv2_angle', 'g-', df_sm, df_ps, 'pi-a1 ippv2_angle')
 #sm_ps('ippv8_angle', 'r-.', df_sm, df_ps, 'pi-a1 ippv8_angle')
 #sm_ps('aco_angle_5', 'r--', df_sm, df_ps, 'a1-pi aco_angle_5')
@@ -207,6 +413,19 @@ plt.legend(prop = {'size' : 11})
 plt.show()
 
 
+
+plt.title('Relevant ip_sig in a1-pi and pi-a1 channel', fontsize = 'xx-large')
+plt.hist(df4['ip_sig_2'], bins = 100, alpha = 0.7, label = 'a1-pi ip_sig_2 F(ip_sig>1.5)=%.2f'%(len(df6['ippv_angle'])/len(df4['ippv_angle'])))
+plt.hist(df40['ip_sig_1'], bins = 100, alpha = 0.7, label = 'pi-a1 ip_sig_1 F(ip_sig>1.5)=%.2f'%(len(df60['ippv_angle'])/len(df40['ippv_angle'])))
+plt.grid()
+plt.xlabel('ip_sig', fontsize = 'x-large')
+plt.ylabel('Occurences', fontsize = 'x-large')
+plt.legend(prop = {'size' : 12})
+plt.show()
+
+
+
+raise END
 #plt.subplot(2,2,3)
 #plt.title('pi-a1 channel aco_angle_5')
 #sm_ps_hist('aco_angle_5', df5_sm, df5_ps)
