@@ -18,17 +18,19 @@ import matplotlib.cm as cm
 #%% Read data
 
 #tree = uproot.open("ROOTfiles/MVAFILE_AllHiggs_tt_pseudo_phitt.root")["ntuple"]
-tree = uproot.open("ROOTfiles/MVAFILE_AllHiggs_tt_pseudo_phitt.root")["ntuple"]
+tree = uproot.open("ROOTfiles/MVAFILE_full_10_10_phitt.root")["ntuple"]
 
 selectors = ['mva_dm_1', 'mva_dm_2', 'tau_decay_mode_1', 'tau_decay_mode_2']
 
-variables = ["aco_angle_1", "gen_phitt", "pseudo_phitt" ] #"pseudo_phitt"]
+variables = ["aco_angle_1", "gen_phitt" ] #"pseudo_phitt"]
 
-variables2 = ["pseudo_wt_cp_sm", "pseudo_wt_cp_mm", "pseudo_wt_cp_ps"]
+TSlevels = ["pseudo", "pola", "pola2", "reco", "reco2"]
+baseTSVars = ["_wt_cp_sm", "_wt_cp_mm", "_wt_cp_ps", "_phitt"]
+TSVars = [x+y for x in TSlevels for y in baseTSVars]
 
 gen_weights = ["wt_cp_sm", "wt_cp_mm", "wt_cp_ps"]
 
-df = tree.pandas.df(gen_weights+variables+variables2+selectors)
+df = tree.pandas.df(gen_weights+variables+TSVars+selectors)
 
 #%% Selection
 
@@ -47,17 +49,18 @@ df = df[(df['mva_dm_1'] == 10) & (df['mva_dm_2'] == 10)]
 #a1-a1 combined
 #df = df[((df['mva_dm_1'] == 2) | (df['mva_dm_1'] == 10)) & ((df['mva_dm_2'] == 2) | (df['mva_dm_2'] == 10))]
 
+#%% Select level to use
+
+level = "pola"
+
 #%% Cleanup
 
-df = df.dropna(subset=['gen_phitt', 'pseudo_phitt'])
-#TODO: remove this when new non-logged maxed data comes in
-#df = df[df['aco_angle_1'] > -400]
+df = df.dropna(subset=['gen_phitt']+TSVars)
 
 #%% Fix shift in data
 gen_phitt = np.array(df['gen_phitt'])
 aco_angle_1 = np.array(df['aco_angle_1'])
-new_phitt = np.array(df['pseudo_phitt'])
-new_phitt = np.where(new_phitt>90, new_phitt-180, new_phitt)
+new_phitt = np.array(df[level+'_phitt'])
 
 wt_cp_sm = np.array(df['wt_cp_sm'])
 wt_cp_mm = np.array(df['wt_cp_mm'])
@@ -70,18 +73,18 @@ plt.xlabel("gen_phitt")
 plt.ylabel("pseudo_phitt")
 plt.hist2d(gen_phitt, new_phitt, 50)
 plt.grid()
-plt.colorbar() 
+plt.colorbar()
 plt.show()
 
-diff_ps = np.array(df["wt_cp_ps"]-df["pseudo_wt_cp_ps"])
-diff_sm = np.array(df["wt_cp_sm"]-df["pseudo_wt_cp_sm"])
-diff_mm = np.array(df["wt_cp_mm"]-df["pseudo_wt_cp_mm"])
+diff_ps = np.array(df["wt_cp_ps"]-df[level+"gen_phitt"])
+diff_sm = np.array(df["wt_cp_sm"]-df[level+"_wt_cp_sm"])
+diff_mm = np.array(df["wt_cp_mm"]-df[level+"_wt_cp_mm"])
 
 plt.figure()
-plt.hist(diff_ps, bins = 50, alpha = 0.5, label = 'gen - reco ps weights\nMean: %.2f, std:%.2f'%(diff_ps.mean(), diff_ps.std()))
-plt.hist(diff_sm, bins = 50, alpha = 0.5, label = 'gen - reco sm weights\nMean: %.2f, std:%.2f'%(diff_sm.mean(), diff_sm.std()))
-plt.hist(diff_mm, bins = 50, alpha = 0.5, label = 'gen - reco mm weights\nMean: %.2f, std:%.2f'%(diff_mm.mean(), diff_mm.std()))
-plt.xlabel('gen-pseudo weights')
+plt.hist(diff_ps, bins = 50, alpha = 0.5, label = 'gen - '+level+' ps weights\nMean: %.2f, std:%.2f'%(diff_ps.mean(), diff_ps.std()))
+plt.hist(diff_sm, bins = 50, alpha = 0.5, label = 'gen - '+level+' sm weights\nMean: %.2f, std:%.2f'%(diff_sm.mean(), diff_sm.std()))
+plt.hist(diff_mm, bins = 50, alpha = 0.5, label = 'gen - '+level+' mm weights\nMean: %.2f, std:%.2f'%(diff_mm.mean(), diff_mm.std()))
+plt.xlabel('gen-'+level+' weights')
 plt.ylabel("Frequency")
 plt.legend()
 plt.grid()
@@ -89,60 +92,47 @@ plt.show()
 
 #%% Discrimination histogram
 
-plt.figure()
-plt.title("Binary Discrimination")
-plt.xlabel("pseudo_phitt / degrees")
-plt.ylabel("Frequency")
-plt.hist(df[df['wt_cp_sm']>df['wt_cp_ps']]['pseudo_phitt'], 50, label="Even", alpha=0.5)
-plt.hist(df[df['wt_cp_sm']<df['wt_cp_ps']]['pseudo_phitt'], 50, label="Odd", alpha=0.5)
-plt.legend()
-plt.grid()
-plt.show()
+for level in levels:
+    print(level)
+    plt.figure()
+    plt.title("Binary Discrimination")
+    plt.xlabel(level+" / degrees")
+    plt.ylabel("Frequency")
+    plt.hist(df[df['wt_cp_sm']>df['wt_cp_ps']][level+'_phitt'], 50, label="Even", alpha=0.5)
+    plt.hist(df[df['wt_cp_sm']<df['wt_cp_ps']][level+'_phitt'], 50, label="Odd", alpha=0.5)
+    plt.legend()
+    plt.grid()
+    plt.show()
 
 #%% Confusion Matrix
 
 def getNconfusion(df, true_class, pred_class):
     true_sm = df['wt_cp_sm'] > df['wt_cp_ps']
-    pred_sm = df['pseudo_wt_cp_sm'] > df['pseudo_wt_cp_ps']
     dfc = df.copy()
     if true_class=='sm':
         dfc = dfc[true_sm]
     else:
         dfc = dfc[~true_sm]
     
+    pred_sm = df[level+'_wt_cp_sm'] > df[level+'_wt_cp_ps']
     if pred_class == 'sm':
         dfc = dfc[pred_sm]
     else:
         dfc = dfc[~pred_sm]
     
     return len(dfc)/len(df)
-        
-#naming trueclass_predclass
-sm_sm = getNconfusion(df, 'sm', 'sm')
-sm_ps = getNconfusion(df, 'sm', 'ps')
-ps_sm = getNconfusion(df, 'ps', 'sm')
-ps_ps = getNconfusion(df, 'ps', 'ps')
 
-print("\t\tTrue SM\tTrue PS")
-print("Pred SM\t{:.4f}\t{:.4f}".format(sm_sm, ps_sm))
-print("Pred PS\t{:.4f}\t{:.4f}".format(sm_ps, ps_ps))
-
-#%% not useful histograms
-"""
-plt.figure()
-plt.xlabel("gen_phitt")
-plt.ylabel("aco_angle_1")
-plt.hist2d(gen_phitt, aco_angle_1, 50)
-plt.grid()
-plt.show()
-
-plt.figure()
-plt.xlabel("pseudo_phitt")
-plt.ylabel("aco_angle_1")
-plt.hist2d(new_phitt, aco_angle_1, 50)
-plt.grid()
-plt.show()
-"""
+for level in levels:
+    #naming trueclass_predclass
+    sm_sm = getNconfusion(df, 'sm', 'sm')
+    sm_ps = getNconfusion(df, 'sm', 'ps')
+    ps_sm = getNconfusion(df, 'ps', 'sm')
+    ps_ps = getNconfusion(df, 'ps', 'ps')
+    
+    print(level)
+    print("\t\tTrue SM\tTrue PS")
+    print("Pred SM\t{:.4f}\t{:.4f}".format(sm_sm, ps_sm))
+    print("Pred PS\t{:.4f}\t{:.4f}".format(sm_ps, ps_ps))
 
 #%% Profile plot
 
@@ -161,10 +151,10 @@ def f(x, nvals, nbins):
     return (nvals/360)*np.where(x<0, (x1*x1-x0*x0)/180 + 2*(x1-x0), (x0*x0-x1*x1)/180 + 2*(x1-x0))
 
 plt.figure()
-plt.xlabel("gen_phitt - pseudo_phitt")
+plt.xlabel("gen_phitt - "+level+"_phitt")
 plt.ylabel("Frequency")
 #plt.xlim(-100, 100)
-plt.hist(res, bins = 100, alpha = 1, label="gen_phitt-pseudo_phitt mean={:.2f}, std={:.2f}".format(np.mean(res), np.std(res)))
+plt.hist(res, bins = 100, alpha = 1, label="gen_phitt-"+level+"_phitt mean={:.2f}, std={:.2f}".format(np.mean(res), np.std(res)))
 plt.plot(x_range, f(x_range, len(res), 100), label="Triangular Distribution")
 plt.grid()
 plt.legend(loc="upper right", frameon=False)
@@ -200,7 +190,7 @@ colourmap = cm.jet(norm(fracs.tolist()))
 
 ax.bar3d(xpos, ypos, zpos, dx, dy, dz, zsort='average', color=colourmap)
 plt.xlabel("gen_phitt")
-plt.ylabel("pseudo_phitt")
+plt.ylabel(level+"_phitt")
 ax.set_zlabel("frequency")
 plt.grid()
 plt.show()
@@ -219,6 +209,6 @@ fig = plt.figure()
 ax = plt.axes(projection='3d')
 ax.plot_surface(xpos, ypos, hist,cmap='viridis', edgecolor='none')
 ax.set_xlabel("gen_phitt")
-ax.set_ylabel("pseudo_phitt")
+ax.set_ylabel(level+"_phitt")
 ax.set_zlabel("frequency")
 plt.show()

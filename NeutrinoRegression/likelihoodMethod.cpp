@@ -1,5 +1,6 @@
-#include <iostream>
 #include <math.h>
+#include <iostream>
+#include <fstream>
 
 #include <gsl/gsl_multimin.h>
 #include "TFile.h"
@@ -143,10 +144,10 @@ double likelihood(double nu_p_vec[6],
 	pred_met(1) = sum_nu.py();
 	
 	double total = 0;
-	// Masses
-	total -= log_normal_probability(pred_m_higgs, 125, 1);
-	total -= log_normal_probability(pred_m_tau_1, 1.777, 0.1);
-	total -= log_normal_probability(pred_m_tau_2, 1.777, 0.1);
+	// Masses, standard deviations taken from vis+gen_neutrino mass histograms
+	total -= log_normal_probability(pred_m_higgs, 125, 8.87);
+	total -= log_normal_probability(pred_m_tau_1, 1.777, 0.38);
+	total -= log_normal_probability(pred_m_tau_2, 1.777, 0.39);
 	
 	// met
 	total -= log_multivariate_normal_probability(pred_met, met, met_cov);
@@ -314,9 +315,13 @@ int main()
 	tree->SetBranchAddress("svcov21_2", &svcov21_2);
 	tree->SetBranchAddress("svcov22_2", &svcov22_2);
 	
+	std::ofstream outfile;
+	outfile.open("neutrinosLikelihood.csv");
+	outfile << "px_1,py_1,pz_1,px_2,py_2,pz_2," << std::endl;
+	
 	// Event loop
 	//for (int i = 0, nEntries = tree->GetEntries(); i < nEntries; i++)
-	for (int i = 0, nEntries = 100; i < nEntries; i++)
+	for (int i = 0, nEntries = 10000; i < nEntries; i++)
 	{
 		tree->GetEntry(i);
 		
@@ -507,7 +512,9 @@ int main()
 				for(unsigned int i=0; i<6; i++)
 				{
 					std::cout << gsl_vector_get(s->x, i) << ", ";
+					outfile << gsl_vector_get(s->x, i) << ",";
 				}
+				outfile << std::endl;
 				std::cout << std::endl;
 				std::cout << "-ln(likelihood) = " << s->fval << std::endl;
 			}
@@ -520,6 +527,8 @@ int main()
 		
 		//std::cout << "Event: " << i << ", likelihood: " << likelihood(params, vis_1, vis_2, met, metCov, sv_1, sv_cov_1, sv_2, sv_cov_2, ip_1, ip_cov_1, ip_2, ip_cov_2) << std::endl;
 	}
+	
+	outfile.close();
 	
 	return 0;
 }
