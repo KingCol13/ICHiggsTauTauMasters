@@ -8,36 +8,29 @@ import basic_functions as bf
 
 def alphas(df, decay_mode1, decay_mode2):
     #A function to return the alpha parameters of the collinear approximation
-    if decay_mode1 == 10 and decay_mode2 == 10:
-        print('\na1(3pr) - a1(3pr) Decay mode\n')
-        #1) define the visible decay products
-        pi_1_4Mom = Momentum4(df["pi_E_1"],df["pi_px_1"],df["pi_py_1"],df["pi_pz_1"])
-        pi2_1_4Mom = Momentum4(df["pi2_E_1"],df["pi2_px_1"],df["pi2_py_1"],df["pi2_pz_1"])
-        pi3_1_4Mom = Momentum4(df["pi3_E_1"],df["pi3_px_1"],df["pi3_py_1"],df["pi3_pz_1"])
-        pi_2_4Mom = Momentum4(df["pi_E_2"],df["pi_px_2"],df["pi_py_2"],df["pi_pz_2"]) 
-        pi2_2_4Mom = Momentum4(df["pi2_E_2"],df["pi2_px_2"],df["pi2_py_2"],df["pi2_pz_2"]) 
-        pi3_2_4Mom = Momentum4(df["pi3_E_2"],df["pi3_px_2"],df["pi3_py_2"],df["pi3_pz_2"]) 
-        tau_1_vis = pi_1_4Mom + pi2_1_4Mom + pi3_1_4Mom 
-        tau_2_vis = pi_2_4Mom + pi2_2_4Mom + pi3_2_4Mom 
+    tau_1_vis, tau_2_vis = bf.get_vis(df, decay_mode1, decay_mode2) 
+    
+    #issue with nans
+    alpha_2 = (df['mety']*tau_1_vis.p_x-df['metx']*tau_1_vis.p_y)/np.where((tau_2_vis.p_y*tau_1_vis.p_x-tau_2_vis.p_x*tau_1_vis.p_y) == 0, 10**-10, (tau_2_vis.p_y*tau_1_vis.p_x-tau_2_vis.p_x*tau_1_vis.p_y))
+
+    alpha_1 = (df['metx']-alpha_2*tau_2_vis.p_x)/np.where(tau_1_vis.p_x == 0, 10**-10, tau_1_vis.p_x)
+    
+    return alpha_1, alpha_2
+
+
+
+def gen_alphas(df, decay_mode1, decay_mode2):
+    #A function to return the alpha parameters of the collinear approximation
+    tau_1_vis = Momentum4.e_eta_phi_p(df["gen_vis_E_1"],df["gen_vis_eta_1"],df["gen_vis_phi_1"],df["gen_vis_p_1"]) 
+    
+    tau_2_vis = Momentum4.e_eta_phi_p(df["gen_vis_E_2"],df["gen_vis_eta_2"],df["gen_vis_phi_2"],df["gen_vis_p_2"])
     
     
     alpha_2 = (df['mety']*tau_1_vis.p_x-df['metx']*tau_1_vis.p_y)/(tau_2_vis.p_y*tau_1_vis.p_x-tau_2_vis.p_x*tau_1_vis.p_y)
 
     alpha_1 = (df['metx']-alpha_2*tau_2_vis.p_x)/tau_1_vis.p_x
     
-    
-    #bring back to 1 when we are higher than 1, neutrino cannot carry away more than the tau momentum
-    #alpha_1 = tf.where(abs(alpha_1)>=1, alpha_1/abs(alpha_1), alpha_1)
-    
-    #alpha_2 = tf.where(abs(alpha_2)>=1, alpha_2/abs(alpha_2), alpha_2)
-    
-    
-    
     return alpha_1, alpha_2
-
-
-
-
 
 
 
@@ -48,29 +41,23 @@ def alphas(df, decay_mode1, decay_mode2):
 
 def alphas_clamped(df, decay_mode1, decay_mode2):
     #A function to return the alpha parameters of the collinear approximation
-    if decay_mode1 == 10 and decay_mode2 == 10:
-        print('\na1(3pr) - a1(3pr) Decay mode\n')
-        #1) define the visible decay products
-        pi_1_4Mom = Momentum4(df["pi_E_1"],df["pi_px_1"],df["pi_py_1"],df["pi_pz_1"])
-        pi2_1_4Mom = Momentum4(df["pi2_E_1"],df["pi2_px_1"],df["pi2_py_1"],df["pi2_pz_1"])
-        pi3_1_4Mom = Momentum4(df["pi3_E_1"],df["pi3_px_1"],df["pi3_py_1"],df["pi3_pz_1"])
-        pi_2_4Mom = Momentum4(df["pi_E_2"],df["pi_px_2"],df["pi_py_2"],df["pi_pz_2"]) 
-        pi2_2_4Mom = Momentum4(df["pi2_E_2"],df["pi2_px_2"],df["pi2_py_2"],df["pi2_pz_2"]) 
-        pi3_2_4Mom = Momentum4(df["pi3_E_2"],df["pi3_px_2"],df["pi3_py_2"],df["pi3_pz_2"]) 
-        tau_1_vis = pi_1_4Mom + pi2_1_4Mom + pi3_1_4Mom 
-        tau_2_vis = pi_2_4Mom + pi2_2_4Mom + pi3_2_4Mom 
+    tau_1_vis, tau_2_vis = bf.get_vis(df, decay_mode1, decay_mode2)
     
     
-    alpha_2 = (df['mety']*tau_1_vis.p_x-df['metx']*tau_1_vis.p_y)/(tau_2_vis.p_y*tau_1_vis.p_x-tau_2_vis.p_x*tau_1_vis.p_y)
+    alpha_2 = (df['mety']*tau_1_vis.p_x-df['metx']*tau_1_vis.p_y)/np.where((tau_2_vis.p_y*tau_1_vis.p_x-tau_2_vis.p_x*tau_1_vis.p_y) == 0, 10**-10, (tau_2_vis.p_y*tau_1_vis.p_x-tau_2_vis.p_x*tau_1_vis.p_y))
 
-    alpha_1 = (df['metx']-alpha_2*tau_2_vis.p_x)/tau_1_vis.p_x
+    alpha_1 = (df['metx']-alpha_2*tau_2_vis.p_x)/np.where(tau_1_vis.p_x == 0, 10**-10, tau_1_vis.p_x)
     
     
     #bring back to 1 when we are higher than 1, neutrino cannot carry away more than the tau momentum
-    alpha_1 = tf.where(abs(alpha_1)>=1, alpha_1/abs(alpha_1), alpha_1)
+    alpha_1 = tf.where(alpha_1<=0, 0*alpha_1/abs(alpha_1), alpha_1)
     
-    alpha_2 = tf.where(abs(alpha_2)>=1, alpha_2/abs(alpha_2), alpha_2)
+    alpha_2 = tf.where(alpha_2<=0, 0*alpha_2/abs(alpha_2), alpha_2)
     
     
     
     return alpha_1, alpha_2
+
+
+
+

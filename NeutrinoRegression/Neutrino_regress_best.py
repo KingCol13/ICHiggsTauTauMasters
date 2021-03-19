@@ -11,10 +11,24 @@ sys.path.append("/home/acraplet/Alie/Masters/ICHiggsTauTauMasters/")
 import uproot 
 import numpy as np
 
+sys.path.append("/home/acraplet/Alie/Masters/ICHiggsTauTauMasters/Modules")
+import basic_functions as bf
+import configuration_module as conf
+import polarimetric_module_checks_week17 as polari
+
+import tensorflow as tf
 import pandas as pd
 import matplotlib.pyplot as plt
-from lbn_modified3 import LBN, LBNLayer
 import tensorflow as tf
+
+
+
+#don't  forget to change name of the file at the end
+tau_mode1 = 10
+tau_mode2 = 10
+decay_mode1 = 10
+decay_mode2 = 10
+
 
 # stop tensorflow trying to overfill GPU memory
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -34,7 +48,7 @@ from pylorentz import Vector4
 from pylorentz import Position4
 
 # loading the tree
-tree = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_AllHiggs_tt.root")["ntuple"]
+tree = uproot.open("/home/acraplet/Alie/Masters/MVAFILE_full_10_10.root")["ntuple"]
 #tree = uproot.open("/eos/user/d/dwinterb/SWAN_projects/Masters_CP/MVAFILE_GluGluHToTauTauUncorrelatedDecay_Filtered_tt_2018.root")["ntuple"]
 print("\n Tree loaded\n")
 
@@ -42,9 +56,15 @@ print("\n Tree loaded\n")
 # define what variables are to be read into the dataframe
 momenta_features = [ "pi_E_1", "pi_px_1", "pi_py_1", "pi_pz_1", #leading charged pi 4-momentum
               "pi_E_2", "pi_px_2", "pi_py_2", "pi_pz_2", #subleading charged pi 4-momentum
-              #"pi0_E_1","pi0_px_1","pi0_py_1","pi0_pz_1", #leading neutral pi 4-momentum
-              #"pi0_E_2","pi0_px_2","pi0_py_2","pi0_pz_2", #subleading neutral pi 4-momentum
+              "pi0_E_1","pi0_px_1","pi0_py_1","pi0_pz_1", #leading neutral pi 4-momentum
+              "pi0_E_2","pi0_px_2","pi0_py_2","pi0_pz_2", #subleading neutral pi 4-momentum
               "gen_nu_p_1", "gen_nu_phi_1", "gen_nu_eta_1", #leading neutrino, gen level
+              #"gen_vis_p_1", "gen_vis_p_2",
+              #"gen_vis_E_1", "gen_vis_E_2",
+              #"gen_vis_phi_1", "gen_vis_phi_2",
+              #"gen_vis_eta_1", "gen_vis_eta_2",
+              
+              
               "gen_nu_p_2", "gen_nu_phi_2", "gen_nu_eta_2", #subleading neutrino, gen level  
               "pi2_E_1", "pi2_px_1", "pi2_py_1", "pi2_pz_1",
               "pi3_E_1", "pi3_px_1", "pi3_py_1", "pi3_pz_1",
@@ -55,15 +75,16 @@ momenta_features = [ "pi_E_1", "pi_px_1", "pi_py_1", "pi_pz_1", #leading charged
 other_features = [ "ip_x_1", "ip_y_1", "ip_z_1",        #leading impact parameter
                    "ip_x_2", "ip_y_2", "ip_z_2",        #subleading impact parameter
                    #"y_1_1", "y_1_2",
+                   "ip_sig_1", "ip_sig_2",
                    "gen_phitt",
-                   "aco_angle_1", "pv_angle"
+                   "aco_angle_1", "aco_angle_6", "aco_angle_5", "aco_angle_7", "pv_angle"
                  ]    # ratios of energies
 
 target = [ "met", "metx", "mety", #"aco_angle_1", "aco_angle_6", "aco_angle_5", "aco_angle_7"
          ]  #acoplanarity angle
     
 selectors = [ "tau_decay_mode_1","tau_decay_mode_2",
-             "mva_dm_1","mva_dm_2"
+             "mva_dm_1","mva_dm_2", "rand"
             ]
 
 additional_info = [ "sv_x_1", "sv_y_1", "sv_z_1",
@@ -94,21 +115,20 @@ met_covariance_matrices = ["metcov00",
                            "metcov10", 
                            "metcov11" ]
 
-covs = sv_covariance_matrices + ip_covariance_matrices + met_covariance_matrices
 
-variables4= momenta_features + other_features + target + selectors + additional_info#+ covs) #copying Kinglsey's way cause it is very clean
+variables4= momenta_features + other_features + target + selectors + additional_info + met_covariance_matrices   #+ covs #copying Kinglsey's way cause it is very clean
 print('Check 1')
 df4 = tree.pandas.df(variables4)
 
 df4 = df4[
-      (df4["tau_decay_mode_1"] == 10) 
-    & (df4["tau_decay_mode_2"] == 10) 
-    & (df4["mva_dm_1"] == 10) 
-    & (df4["mva_dm_2"] == 10)
-    & (df4["gen_nu_p_1"] > -4000)
-    & (df4["gen_nu_p_2"] > -4000)
-    & (df4["sv_x_1"] != 0)
-    & (df4["sv_x_2"] != 0)
+      (df4["tau_decay_mode_1"] == tau_mode1) 
+    & (df4["tau_decay_mode_2"] == tau_mode2) 
+    & (df4["mva_dm_1"] == decay_mode1) 
+    & (df4["mva_dm_2"] == decay_mode2)
+    #& (df4["gen_nu_p_1"] > -4000)
+    #& (df4["gen_nu_p_2"] > -4000)
+    #& (df4["sv_x_1"] != 0)
+    #& (df4["sv_x_2"] != 0)
     
 ]
 
@@ -116,7 +136,7 @@ print(len(df4),'This is the length') #up to here we are fine
 
 lenght1 = len(df4)
 trainFrac = 0.7
-df4 = df4.dropna(subset=momenta_features + other_features + target + additional_info)
+df4 = df4.dropna()
 
 length2 = len(df4)
 
@@ -178,11 +198,11 @@ def get_a1(df4):
     pi_2_4Mom = Momentum4(df4["pi_E_2"],df4["pi_px_2"],df4["pi_py_2"],df4["pi_pz_2"]) 
     pi2_2_4Mom = Momentum4(df4["pi2_E_2"],df4["pi2_px_2"],df4["pi2_py_2"],df4["pi2_pz_2"]) 
     pi3_2_4Mom = Momentum4(df4["pi3_E_2"],df4["pi3_px_2"],df4["pi3_py_2"],df4["pi3_pz_2"]) 
-    #pi0_1_4Mom = Momentum4(df4["pi0_E_1"],df4["pi0_px_1"],df4["pi0_py_1"],df4["pi0_pz_1"])
-    #pi0_2_4Mom = Momentum4(df4["pi0_E_2"],df4["pi0_px_2"],df4["pi0_py_2"],df4["pi0_pz_2"])
+    pi0_1_4Mom = Momentum4(df4["pi0_E_1"],df4["pi0_px_1"],df4["pi0_py_1"],df4["pi0_pz_1"])
+    pi0_2_4Mom = Momentum4(df4["pi0_E_2"],df4["pi0_px_2"],df4["pi0_py_2"],df4["pi0_pz_2"])
 
-    tau_1_vis = pi_1_4Mom + pi2_1_4Mom + pi3_1_4Mom 
-    tau_2_vis = pi_2_4Mom + pi2_2_4Mom + pi3_2_4Mom 
+    tau_1_vis = pi_1_4Mom + pi2_1_4Mom + pi3_1_4Mom #pi0_1_4Mom#
+    tau_2_vis = pi_2_4Mom + pi2_2_4Mom + pi3_2_4Mom #pi0_2_4Mom #
     
     return tau_1_vis, tau_2_vis
     
@@ -191,6 +211,24 @@ def get_nu(df4):
     nu_1 = Momentum4.m_eta_phi_p(np.zeros(len(df4["gen_nu_phi_1"])), df4["gen_nu_eta_1"], df4["gen_nu_phi_1"], df4["gen_nu_p_1"])
     nu_2 = Momentum4.m_eta_phi_p(np.zeros(len(df4["gen_nu_phi_2"])), df4["gen_nu_eta_2"], df4["gen_nu_phi_2"], df4["gen_nu_p_2"])
     return nu_1, nu_2
+
+
+_, _, _, _, nu1_guessOld, nu2_guessOld = polari.polarimetric_no_clamping(df_eval, decay_mode1, decay_mode2)
+df_eval['pola3_nu_p_1'] = nu1_guessOld.p
+df_eval['pola3_nu_p_2'] = nu2_guessOld.p
+df_eval['pola3_nu_phi_1'] = nu1_guessOld.phi
+df_eval['pola3_nu_phi_2'] = nu2_guessOld.phi
+df_eval['pola3_nu_eta_1'] = nu1_guessOld.eta
+df_eval['pola3_nu_eta_2'] = nu2_guessOld.eta
+
+
+_, _, _, _, nu1_guessOld, nu2_guessOld = polari.polarimetric_change_dir(df_eval, decay_mode1, decay_mode2)
+df_eval['pola4_nu_p_1'] = nu1_guessOld.p
+df_eval['pola4_nu_p_2'] = nu2_guessOld.p
+df_eval['pola4_nu_phi_1'] = nu1_guessOld.phi
+df_eval['pola4_nu_phi_2'] = nu2_guessOld.phi
+df_eval['pola4_nu_eta_1'] = nu1_guessOld.eta
+df_eval['pola4_nu_eta_2'] = nu2_guessOld.eta
 
 
 ########################################################################################################
@@ -302,8 +340,12 @@ def loss_fn(y_true, y_pred):
 
 
 def get_x_y(df4):
+    #alpha_1, alpha_2 = am.alphas_clamped(df4, decay_mode1, decay_mode2)
+    #alphas = [alpha_1, alpha_2]
     tau_1_vis, tau_2_vis = get_a1(df4)
     nu_1, nu_2 = get_nu(df4)
+    Configuration = conf.Configurations(df4, decay_mode1, decay_mode2)
+    
     ref = [#smear_px,py                      #0
         #one_d(1.776),                      #1
         #df4["metx"],                   #2
@@ -328,30 +370,43 @@ def get_x_y(df4):
     ]
     y = tf.transpose(ref)
     
-    x8 = np.array([
-              #smear_px,
-              #smear_py,
-              Mom4_to_tf(tau_1_vis.e),    #4
-              Mom4_to_tf(tau_1_vis.p_x),  #4
-              Mom4_to_tf(tau_1_vis.p_y),  #4
-              Mom4_to_tf(tau_1_vis.p_z),  #4
-              Mom4_to_tf(tau_2_vis.e),    #5
-              Mom4_to_tf(tau_2_vis.p_x),  #5
-              Mom4_to_tf(tau_2_vis.p_y),  #5
-              Mom4_to_tf(tau_2_vis.p_z),  #5
-              #df4["ip_x_1"], df4["ip_y_1"], df4["ip_z_1"], #6
-              #df4["ip_x_2"], df4["ip_y_2"], df4["ip_z_2"], #7
-              #df4["ip_sig_2"], df4["ip_sig_1"], #8,9
-              df4["met"],                #1
-              df4["metx"],df4["mety"],   #2,3
-              df4["sv_x_1"], df4["sv_y_1"], df4["sv_z_1"], #10
-              df4["sv_x_2"], df4["sv_y_2"], df4["sv_z_2"], #11
-              #*sv_cov,
-              #*ip_cov,
-              #*met_cov,              
-             ])
-    x = tf.transpose(x8)
+    x = Configuration.x24
+    print(x)
+    return x, y
+
+def get_x_y_old(df4):
+    #alpha_1, alpha_2 = am.alphas_clamped(df4, decay_mode1, decay_mode2)
+    #alphas = [alpha_1, alpha_2]
+    tau_1_vis, tau_2_vis = get_a1(df4)
+    nu_1, nu_2 = get_nu(df4)
+    Configuration = conf.Configurations(df4, decay_mode1, decay_mode2)
     
+    ref = [#smear_px,py                      #0
+        #one_d(1.776),                      #1
+        #df4["metx"],                   #2
+        #df4["mety"],                   #3
+        Mom4_to_tf(tau_1_vis.e),       #4
+        Mom4_to_tf(tau_1_vis.p_x),     #5
+        Mom4_to_tf(tau_1_vis.p_y),     #6
+        Mom4_to_tf(tau_1_vis.p_z),     #7
+        Mom4_to_tf(tau_2_vis.e),       #8
+        Mom4_to_tf(tau_2_vis.p_x),     #9 
+        Mom4_to_tf(tau_2_vis.p_y),     #10
+        Mom4_to_tf(tau_2_vis.p_z),     #11
+        #one_d(125),                    #12
+        #Mom4_to_tf(nu_1.e),            #13       corresponding to          #0
+        Mom4_to_tf(nu_1.p_x),          #14                                 #1
+        Mom4_to_tf(nu_1.p_y),          #15                                 #2
+        Mom4_to_tf(nu_1.p_z),          #16                                 #3
+        #Mom4_to_tf(nu_2.e),            #17                                 #4
+        Mom4_to_tf(nu_2.p_x),          #18                                 #5
+        Mom4_to_tf(nu_2.p_y),          #19                                 #6
+        Mom4_to_tf(nu_2.p_z),          #20                                 #7
+    ]
+    y = tf.transpose(ref)
+    
+    x = Configuration.x23
+    print(x)
     return x, y
     
     
@@ -365,21 +420,20 @@ E_size = 25
 B_size = 500#2**10
 
 #For now only
-ratio_all = 1
-ratio_p = 0
-ratio_phi = 0
-ratio_tau = 0
-ratio_H = 0
-
+ratio_all = 1/10000
+ratio_p = 10/1500
+ratio_phi = 4
+ratio_tau = 10
+ratio_H = 4
 
 x_train, y_train = get_x_y(df_train)
 x_val, y_val = get_x_y(df_eval)
 
-
 input_1 = tf.keras.Input(shape = x_val.shape, name="lab_frame")
 x2 = tf.keras.layers.Dense(300, activation = 'relu', name="learning")(input_1)
 x3 = tf.keras.layers.Dense(300, activation = 'relu', name="learning2")(x2)
-x4 = tf.keras.layers.Dropout(0.1, name="dropout2")(x3)
+x5 = tf.keras.layers.Dense(300, activation = 'relu', name="learning3")(x3)
+x4 = tf.keras.layers.Dropout(0.1, name="dropout2")(x5)
 output = tf.keras.layers.Dense(14, name="output")(x4)
 
 
@@ -403,10 +457,10 @@ nu_1_reco = Momentum4(res[:, i_nu1_px]**2+res[:, i_nu1_py]**2+np.sqrt(res[:, i_n
 
 nu_2_reco = Momentum4(res[:, i_nu2_px]**2+res[:, i_nu2_py]**2+np.sqrt(res[:, i_nu2_pz]**2), res[:, i_nu2_px], res[:, i_nu2_py], res[:, i_nu2_pz])
 
-#%% Add/remove columns to dataframe -  Thanks Kinglsey
-del df_eval['sv_x_1'], df_eval['sv_y_1'], df_eval['sv_z_1']
-del df_eval['sv_x_2'], df_eval['sv_y_2'], df_eval['sv_z_2']
 
+#%% Add/remove columns to dataframe -  Thanks Kinglsey
+#del df_eval['sv_x_1'], df_eval['sv_y_1'], df_eval['sv_z_1']
+#del df_eval['sv_x_2'], df_eval['sv_y_2'], df_eval['sv_z_2']
 df_eval['reco_nu_p_1'] = nu_1_reco.p
 df_eval['reco_nu_p_2'] = nu_2_reco.p
 df_eval['reco_nu_phi_1'] = nu_1_reco.phi
@@ -414,12 +468,62 @@ df_eval['reco_nu_phi_2'] = nu_2_reco.phi
 df_eval['reco_nu_eta_1'] = nu_1_reco.eta
 df_eval['reco_nu_eta_2'] = nu_2_reco.eta
 
+#Polarimetric neutrinos
+_, _, _, _, nu1_guess, nu2_guess = polari.polarimetric_theta_max(df_eval, decay_mode1, decay_mode2)
+df_eval['pola_nu_p_1'] = nu1_guess.p
+df_eval['pola_nu_p_2'] = nu2_guess.p
+df_eval['pola_nu_phi_1'] = nu1_guess.phi
+df_eval['pola_nu_phi_2'] = nu2_guess.phi
+df_eval['pola_nu_eta_1'] = nu1_guess.eta
+df_eval['pola_nu_eta_2'] = nu2_guess.eta
+
+
+# Working with polarimetric before update data !
+x_train, y_train = get_x_y_old(df_train)
+x_val, y_val = get_x_y_old(df_eval)
+
+
+model.compile(loss = loss_fn, optimizer = 'adam', metrics = ['mae', loss_D_p, loss_phi, loss_p, loss_mass_tau, loss_mass_Higgs])
+
+history = model.fit(x_train, y_train, validation_data=(x_val, y_val),
+    epochs=E_size,
+    batch_size = B_size)
+
+res = np.array(model({"lab_frame": x_val}), dtype=np.float64)
+
+nu_1_reco_old = Momentum4(res[:, i_nu1_px]**2+res[:, i_nu1_py]**2+np.sqrt(res[:, i_nu1_pz]**2), res[:, i_nu1_px], res[:, i_nu1_py], res[:, i_nu1_pz])
+
+
+nu_2_reco_old = Momentum4(res[:, i_nu2_px]**2+res[:, i_nu2_py]**2+np.sqrt(res[:, i_nu2_pz]**2), res[:, i_nu2_px], res[:, i_nu2_py], res[:, i_nu2_pz])
+
+
+df_eval['reco2_nu_p_1'] = nu_1_reco_old.p
+df_eval['reco2_nu_p_2'] = nu_2_reco_old.p
+df_eval['reco2_nu_phi_1'] = nu_1_reco_old.phi
+df_eval['reco2_nu_phi_2'] = nu_2_reco_old.phi
+df_eval['reco2_nu_eta_1'] = nu_1_reco_old.eta
+df_eval['reco2_nu_eta_2'] = nu_2_reco_old.eta
+
+#Polarimetric neutrinos
+_, _, _, _, nu1_guessOld, nu2_guessOld = polari.polarimetric(df_eval, decay_mode1, decay_mode2)
+df_eval['pola2_nu_p_1'] = nu1_guessOld.p
+df_eval['pola2_nu_p_2'] = nu2_guessOld.p
+df_eval['pola2_nu_phi_1'] = nu1_guessOld.phi
+df_eval['pola2_nu_phi_2'] = nu2_guessOld.phi
+df_eval['pola2_nu_eta_1'] = nu1_guessOld.eta
+df_eval['pola2_nu_eta_2'] = nu2_guessOld.eta
+
+
+
+
 #%%  Write root file
+#to save only the a1-a1 decays
+#df_eval = df4 
 
 treeBranches = {column : str(df_eval[column].dtypes) for column in df_eval}
 branchDict = {column : np.array(df_eval[column]) for column in df_eval}
 tree = uproot.newtree(treeBranches, title="ntuple", compression=uproot.ZLIB(3))
 
-with uproot.recreate("MVAFILE_AllHiggs_tt_regr.root") as f:
+with uproot.recreate("MVAFILE_full_10_10_pola6.root") as f:
     f["ntuple"] = tree
     f["ntuple"].extend(branchDict)
